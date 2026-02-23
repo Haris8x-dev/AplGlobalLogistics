@@ -1,7 +1,6 @@
 import prisma from '../../config/db.js';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-
+import generateToken from '../../utils/generateToken.js';
 
 // User Credential Generation for both Employee and Admin - This will be used by the Manager to create credentials for new employees and admins.
 export const generateUser = async (req, res) => {
@@ -69,13 +68,8 @@ export const loginUser = async (req, res) => {
             if (!isSecretMatch) return res.status(401).json({ message: "Invalid Admin Secret Code" });
         }
 
-        // 4. Generate Token
-        const secret = process.env.JWT_SECRET || "fallback_secret_key_123";
-        const token = jwt.sign(
-            { userId: user.id, role: user.role },
-            secret,
-            { expiresIn: '1d' }
-        );
+        // 4. Generate Token using our Utility
+        const token = generateToken(user.id, user.role);
 
         res.status(200).json({
             message: "Success",
