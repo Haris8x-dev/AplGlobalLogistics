@@ -1,9 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
+
+
 // Pointing to the new organized routes folder
 import authRoutes from './routes/auth/authRoutes.js';
-import cookieParser from 'cookie-parser';
+import clientRoutes from './routes/admin/clientRoutes.js';
 
 dotenv.config();
 
@@ -20,6 +23,7 @@ app.use('/api/auth', authRoutes);
 
 // Main Entry for Auth APIs
 app.use('/api/auth', authRoutes);
+app.use('/api/admin/clients', clientRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'APL Core Server is Healthy' });
