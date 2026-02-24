@@ -10,7 +10,7 @@ router.post('/generate', isAdmin, generateUser);
 router.get('/getAuth', isAdmin, getAuth);
 
 // PUBLIC: Anyone can attempt to login if they have credentials, but we will check if they are active in the loginUser controller
-router.post('/login', isUserActive, loginUser);
+router.post('/login', loginUser);
 // Both Employees and Admins can logout
 router.post('/logout', logoutUser);
 
