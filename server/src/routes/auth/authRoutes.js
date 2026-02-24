@@ -1,12 +1,17 @@
 import express from 'express';
-import { generateUser, loginUser } from '../../controllers/auth/authController.js';
+import { generateUser, loginUser, logoutUser, getAuth } from '../../controllers/auth/authController.js';
+import { isAdmin } from '../../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-// The path will be: POST /api/auth/generate
-router.post('/generate', generateUser);
+// PROTECTED: Only an existing Admin can create new users
+router.post('/generate', isAdmin, generateUser);
+// PROTECTED: Only Admins can view the user lists
+router.get('/getAuth', isAdmin, getAuth);
 
-// Route for everyone to login
+// PUBLIC: Anyone can attempt to login
 router.post('/login', loginUser);
-
+// Both Employees and Admins can logout
+router.post('/logout', logoutUser);
+    
 export default router;
