@@ -47,9 +47,6 @@ export const generateUser = async (req, res) => {
 };
 
 
-
-
-
 // User Login for both Employee and Admin - This will be used by both Employees and Admins to log in. Admins will have an extra step to verify their secret code.
 export const loginUser = async (req, res) => {
     try {
@@ -233,7 +230,7 @@ export const updateUser = async (req, res) => {
 };
 
 
-// This handles the Role Reversal & Secret Code Reset
+// USER ROLE + SECRET CODE UPDATION - This handles the Role Reversal & Secret Code Reset
 export const updateUserRole = async (req, res) => {
     try {
         const { id } = req.params;
