@@ -1,5 +1,5 @@
 {
-  "email": "admin@aplcore.com",
-  "password": "AdminPassword123",
-  "secretCode": "APL_ROOT_2026",
+  "email": "aliadmin@aplcore.com",
+  "password": "Admin123",
+  "secretCode": "admin"
 }
