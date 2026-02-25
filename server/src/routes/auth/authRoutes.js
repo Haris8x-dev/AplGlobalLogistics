@@ -1,5 +1,5 @@
 import express from 'express';
-import { generateUser, loginUser, logoutUser, getAuth, toggleUserStatus } from '../../controllers/auth/authController.js';
+import { generateUser, loginUser, logoutUser, getAuth, toggleUserStatus, updateUser, updateUserRole } from '../../controllers/auth/authController.js';
 import { isAdmin, isUserActive } from '../../middlewares/authMiddleware.js';
 
 const router = express.Router();
@@ -16,5 +16,11 @@ router.post('/logout', logoutUser);
 
 // URL: /api/auth/status/:id
 router.patch('/status/:id', isAdmin, isUserActive, toggleUserStatus);
+
+// URL: PATCH /api/auth/update/:id
+router.patch('/update/:id', isAdmin, isUserActive, updateUser);
+
+// URL: PATCH /api/auth/update-role/:id
+router.patch('/update-role/:id', isAdmin, isUserActive, updateUserRole);
 
 export default router;
