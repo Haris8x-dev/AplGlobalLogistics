@@ -83,18 +83,23 @@ model ClientStock {
 }
 
 model StockMovement {
-  id           String   @id @default(uuid())
-  quantity     Int      
-  transferType String?  
-  message      String?  // 🚀 Replaced JSON metadata with this simple string
+  id              String   @id @default(uuid())
+  quantity        Int
+  transferType    String?
+  message         String?
 
-  modelId      String
-  model        MobileModel @relation(fields: [modelId], references: [id])
-  clientId     String
-  client       Client      @relation(fields: [clientId], references: [id])
-  
-  userId       String
-  user         User        @relation(fields: [userId], references: [id])
+  transferGroupId String?   // 🔥 links both sides of transfer
+  fromClientId    String?   // 🔥 structured tracking
+  toClientId      String?   // 🔥 structured tracking
 
-  createdAt    DateTime @default(now())
+  modelId         String
+  model           MobileModel @relation(fields: [modelId], references: [id])
+
+  clientId        String
+  client          Client      @relation(fields: [clientId], references: [id])
+
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+
+  createdAt       DateTime @default(now())
 }
