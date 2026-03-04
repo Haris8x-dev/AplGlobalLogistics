@@ -25,10 +25,9 @@ export const transferStock = async (req, res) => {
 
         await prisma.$transaction(async (tx) => {
 
-            // 🔥 Generate one transfer group ID
             const transferGroupId = uuidv4();
 
-            // 1️⃣ Fetch clients for readable logging
+            // 1️⃣ Fetch clients
             const [fromClient, toClient] = await Promise.all([
                 tx.client.findUnique({
                     where: { id: fromClientId },
@@ -44,7 +43,7 @@ export const transferStock = async (req, res) => {
                 throw new Error("Invalid client(s)");
             }
 
-            // 2️⃣ Check Source Balance
+            // 2️⃣ Check if model exists for source client
             const sourceStock = await tx.clientStock.findUnique({
                 where: {
                     clientId_modelId: {
@@ -54,18 +53,22 @@ export const transferStock = async (req, res) => {
                 }
             });
 
-            if (!sourceStock || sourceStock.currentBalance < qty) {
+            // 🔥 NEW: Model missing check
+            if (!sourceStock) {
+                throw new Error(`Model missing for ${fromClient.companyName}`);
+            }
+
+            // 🔥 NEW: Quantity check separated
+            if (sourceStock.currentBalance < qty) {
                 throw new Error(
                     `Insufficient stock at ${fromClient.companyName}`
                 );
             }
 
             // 3️⃣ Prepare Messages
-            const outMessage = `Transferred ${qty} to ${toClient.companyName}${userMessage ? " | " + userMessage : ""
-                }`;
+            const outMessage = `Transferred ${qty} to ${toClient.companyName}${userMessage ? " | " + userMessage : ""}`;
 
-            const inMessage = `Received ${qty} from ${fromClient.companyName}${userMessage ? " | " + userMessage : ""
-                }`;
+            const inMessage = `Received ${qty} from ${fromClient.companyName}${userMessage ? " | " + userMessage : ""}`;
 
             // ==========================
             // 🔴 DEDUCT FROM SOURCE
