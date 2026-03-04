@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 const generateToken = (userId, role) => {
+
     // We handle the secret check here
     const secret = process.env.JWT_SECRET || "fallback_secret_key_123";
 

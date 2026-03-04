@@ -17,6 +17,9 @@ model User {
   password    String
   role        String   @default("EMPLOYEE")
   secretCode  String?
+
+  stockMovements StockMovement[] // HISTORY: Every +/- that happened to this client
+  clientStocks   ClientStock[]   // BALANCE: The actual current totals for this client
   isActive    Boolean  @default(true) // Added this
   createdAt   DateTime @default(now())
 }
@@ -33,6 +36,9 @@ model Client {
   
   // Status-based "Soft Delete"
   isActive    Boolean  @default(true) 
+
+ stockMovements StockMovement[] // HISTORY: Every +/- that happened to this client
+ clientStocks   ClientStock[]   // BALANCE: The actual current totals for this client
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -53,5 +59,42 @@ model MobileModel {
   name       String   // e.g., "iPhone 16 Pro Max 256GB"
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  stockMovements StockMovement[] // HISTORY: Every +/- that happened to this client
+  clientStocks   ClientStock[]   // BALANCE: The actual current totals for this client
   createdAt  DateTime @default(now())
+}
+
+model ClientStock {
+  id             String      @id @default(uuid())
+  currentBalance Int         @default(0)
+  lastMessage    String?     // 🚀 Stores the most recent "Why"
+  
+  clientId       String
+  client         Client      @relation(fields: [clientId], references: [id])
+  modelId        String
+  model          MobileModel @relation(fields: [modelId], references: [id])
+
+  lastUpdatedBy  String
+  user           User        @relation(fields: [lastUpdatedBy], references: [id])
+
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([clientId, modelId])
+}
+
+model StockMovement {
+  id           String   @id @default(uuid())
+  quantity     Int      
+  transferType String?  
+  message      String?  // 🚀 Replaced JSON metadata with this simple string
+
+  modelId      String
+  model        MobileModel @relation(fields: [modelId], references: [id])
+  clientId     String
+  client       Client      @relation(fields: [clientId], references: [id])
+  
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+
+  createdAt    DateTime @default(now())
 }

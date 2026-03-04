@@ -1,12 +1,11 @@
 import express from 'express';
-import {
-    addCategory,
-    toggleCategoryStatus,
-    addMobileModel,
-    getActiveInventory,
-    getAdminInventory,
-    deleteMobileModel
-} from '../../controllers/admin/inventoryController.js';
+
+import { addCategory } from '../../controllers/admin/inventory/invAddCat.controller.js';
+import { toggleCategoryStatus } from '../../controllers/admin/inventory/invCatStatus.controller.js';
+import { addMobileModel } from '../../controllers/admin/inventory/invAddMobile.controller.js';
+import { getActiveInventory } from '../../controllers/admin/inventory/invGetActiveInventory.controller.js';
+import { getAdminInventory } from '../../controllers/admin/inventory/invGetAdminInventory.controller.js';
+import { deleteMobileModel } from '../../controllers/admin/inventory/invDeleteMobile.controller.js';
 import { isAdmin, isUserActive } from '../../middlewares/authMiddleware.js';
 
 const router = express.Router();

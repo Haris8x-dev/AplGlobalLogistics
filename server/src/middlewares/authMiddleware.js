@@ -57,3 +57,33 @@ export const isUserActive = async (req, res, next) => {
         res.status(500).json({ message: "Error checking account status" });
     }
 };
+
+export const verifyToken = async (req, res, next) => {
+    const token = req.cookies.token;
+
+    if (!token) {
+        return res.status(401).json({ message: "No token, authorization denied" });
+    }
+
+    try {
+        // 1. Verify using the same secret
+        const secret = process.env.JWT_SECRET || "fallback_secret_key_123";
+        const decoded = jwt.verify(token, secret);
+
+        // 2. USE decoded.userId (NOT decoded.id)
+        const user = await prisma.user.findUnique({
+            where: { id: decoded.userId }, // Changed from decoded.id
+            select: { id: true, role: true, isActive: true }
+        });
+
+        if (!user || !user.isActive) {
+            return res.status(401).json({ message: "User is inactive or does not exist" });
+        }
+
+        req.user = user;
+        next();
+    } catch (error) {
+        console.error("JWT Verification Error:", error.message);
+        res.status(401).json({ message: "Token is not valid" });
+    }
+};

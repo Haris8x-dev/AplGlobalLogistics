@@ -1,5 +1,9 @@
 import express from 'express';
-import { addClient, getClients, toggleClientStatus, updateClient } from '../../controllers/admin/clientController.js';
+
+import { addClient } from '../../controllers/admin/clients/clientsAdd.controller.js';
+import { getClients } from '../../controllers/admin/clients/clientsGet.controller.js';
+import { toggleClientStatus } from '../../controllers/admin/clients/clientStatus.controller.js';
+import { updateClient } from '../../controllers/admin/clients/clientsUpdate.controller.js';
 import { isAdmin, isUserActive } from '../../middlewares/authMiddleware.js';
 
 const router = express.Router();

@@ -1,5 +1,13 @@
 import express from 'express';
-import { generateUser, loginUser, logoutUser, getAuth, toggleUserStatus, updateUser, updateUserRole } from '../../controllers/auth/authController.js';
+
+
+import { generateUser } from '../../controllers/auth/authGenUser.controller.js';
+import { loginUser } from '../../controllers/auth/authLoginUser.controller.js';
+import { logoutUser } from '../../controllers/auth/authLogoutUser.controller.js';
+import { getAuth } from '../../controllers/auth/authGetAuth.controller.js';
+import { toggleUserStatus } from '../../controllers/auth/authUserStatus.controller.js';
+import { updateUser } from '../../controllers/auth/authUpdateUser.controller.js';
+import { updateUserRole } from '../../controllers/auth/authUpdateUserRole.controller.js';
 import { isAdmin, isUserActive } from '../../middlewares/authMiddleware.js';
 
 const router = express.Router();
