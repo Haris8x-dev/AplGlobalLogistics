@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
-import Home from "./pages/Home/Home";
 import Gatekeeper from "./pages/Gatekeeper/Gatekeeper";
 import IdentitySelection from "./pages/IdentitySelection/IdentitySelection";
 import AdminLogin from "./pages/admin-login/AdminLogin"; // Added
 import EmployeeLogin from "./pages/employee-login/EmployeeLogin"; // Added
+import AdminDashboard from "./pages/admin-dashboard/display/display"; // Added
 
 function App() {
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -35,9 +35,13 @@ function App() {
       path: "/employee-login",
       element: <EmployeeLogin />,
     },
-    {
-      path: "/dashboard",
-      element: <Home />,
+     {
+      path: "/admin-dashboard",
+      element: <AdminDashboard />,
+    },
+     {
+      path: "/employee-dashboard",
+      element: <AdminDashboard />,
     },
     // Fallback: if user tries to access a non-existent route, send to /login
     {

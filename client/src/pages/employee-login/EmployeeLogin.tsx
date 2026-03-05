@@ -1,14 +1,51 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const EmployeeLogin: React.FC = () => {
     const navigate = useNavigate();
-    const [formData, setFormData] = useState({ id: "", password: "" });
+    const [formData, setFormData] = useState({ email: "", password: "" });
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("Employee Login Attempt:", formData);
-        navigate("/dashboard");
+        setError("");
+        setLoading(true);
+
+        try {
+            const response = await axios.post(
+                "http://localhost:5000/api/auth/login",
+                formData,
+                {
+                    withCredentials: true, // Important for cookies
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
+            // Success - redirect based on role
+            if (response.data.role === "EMPLOYEE") {
+                navigate("/employee-dashboard");
+            } else if (response.data.role === "ADMIN") {
+                setError("Please use the Admin login portal");
+            } else {
+                setError("Access denied: Invalid role");
+            }
+        } catch (err: any) {
+            console.error("Login Error:", err);
+            // Axios puts server response in err.response.data
+            if (err.response?.data?.message) {
+                setError(err.response.data.message);
+            } else if (err.response) {
+                setError("Login failed. Please try again.");
+            } else {
+                setError("Server connection error. Please try again.");
+            }
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -30,14 +67,21 @@ const EmployeeLogin: React.FC = () => {
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6">
+                    {error && (
+                        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                            {error}
+                        </div>
+                    )}
+
                     <div className="space-y-2">
-                        <label className="block text-slate-400 text-[11px] uppercase tracking-wider ml-1">Staff ID</label>
+                        <label className="block text-slate-400 text-[11px] uppercase tracking-wider ml-1">Staff Email</label>
                         <input
-                            type="text"
+                            type="email"
                             required
                             className="w-full px-5 py-4 rounded-2xl bg-slate-900/40 border border-slate-700/50 text-white focus:border-[var(--apl-green)] focus:ring-1 focus:ring-[var(--apl-green)]/20 outline-none transition-all placeholder:text-slate-600"
-                            placeholder="e.g. staff_102"
-                            onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+                            placeholder="employee@example.com"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         />
                     </div>
 
@@ -48,12 +92,17 @@ const EmployeeLogin: React.FC = () => {
                             required
                             className="w-full px-5 py-4 rounded-2xl bg-slate-900/40 border border-slate-700/50 text-white focus:border-[var(--apl-green)] focus:ring-1 focus:ring-[var(--apl-green)]/20 outline-none transition-all placeholder:text-slate-600"
                             placeholder="••••••••"
+                            value={formData.password}
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         />
                     </div>
 
-                    <button className="w-full py-5 mt-4 bg-gradient-to-r from-[var(--apl-green)] to-[#4eb192] text-white font-bold text-sm uppercase tracking-widest rounded-2xl shadow-xl shadow-emerald-500/10 hover:shadow-emerald-500/20 active:scale-[0.98] transition-all">
-                        Access Dashboard
+                    <button 
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-5 mt-4 bg-gradient-to-r from-[var(--apl-green)] to-[#4eb192] text-white font-bold text-sm uppercase tracking-widest rounded-2xl shadow-xl shadow-emerald-500/10 hover:shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {loading ? "Authenticating..." : "Access Dashboard"}
                     </button>
                 </form>
             </div>
