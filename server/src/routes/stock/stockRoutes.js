@@ -2,7 +2,7 @@ import express from 'express';
 import { addInitialStock } from '../../controllers/stock/addStock.controller.js';
 import { transferStock } from '../../controllers/stock/transferStock.controller.js';
 import { getMasterInventory } from '../../controllers/stock/masterInventory.controller.js';
-import { getClientStockHistory } from '../../controllers/stock/clientStockHistory.controller.js';
+import { getClientStockHistory, getRecentMovements } from '../../controllers/stock/clientStockHistory.controller.js';
 import { verifyToken } from '../../middlewares/authMiddleware.js';
 
 const router = express.Router();
@@ -21,5 +21,8 @@ router.get('/master-inventory', getMasterInventory);
 
 // 4. Client-Specific History (The Detailed Ledger)
 router.get('/history/:clientId/:modelId', getClientStockHistory);
+
+//` 5. Recent Activity Feed (The Real-Time Pulse)
+router.get('/recent-activity', getRecentMovements);
 
 export default router;

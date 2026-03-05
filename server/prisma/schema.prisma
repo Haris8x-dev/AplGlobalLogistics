@@ -103,3 +103,9 @@ model StockMovement {
 
   createdAt       DateTime @default(now())
 }
+
+model AppConfig {
+  id            String   @id @default("GLOBAL_CONFIG") // Only one record ever exists
+  entryPassword String   // The hashed password to enter the app
+  updatedAt     DateTime @updatedAt
+}

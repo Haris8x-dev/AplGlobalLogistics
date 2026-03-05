@@ -1,5 +1,5 @@
+import cors from "cors";
 import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 
@@ -10,11 +10,21 @@ import clientRoutes from './routes/admin/clientRoutes.js';
 import inventoryRoutes from './routes/admin/inventoryRoutes.js'; 
 import stockRoutes from './routes/stock/stockRoutes.js';
 
+// 🔧 CORS Configuration
+const corsOptions = {
+  // Replace with your actual frontend URL (e.g., http://localhost:5173 for Vite)
+  origin: ["http://localhost:5173"], 
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-app-session"],
+  credentials: true, // Crucial if you use Cookies for Auth
+};
+
+
 dotenv.config();
 const app = express();
 
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
