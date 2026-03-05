@@ -1,4 +1,4 @@
-import prisma from "../../../config/db.js";
+import prisma from "../../../../config/db.js";
 
 // 2. Toggle Category Status (Active/Inactive)
 export const toggleCategoryStatus = async (req, res) => {

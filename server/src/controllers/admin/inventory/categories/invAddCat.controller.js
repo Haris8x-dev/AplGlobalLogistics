@@ -1,4 +1,4 @@
-import prisma from "../../../config/db.js";
+import prisma from "../../../../config/db.js";
 
 // 1. Add Category (e.g., Apple, Samsung)
 export const addCategory = async (req, res) => {

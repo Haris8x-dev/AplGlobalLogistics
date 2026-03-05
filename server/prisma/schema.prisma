@@ -55,13 +55,14 @@ model Category {
 
 
 model MobileModel {
-  id         String   @id @default(uuid())
-  name       String   // e.g., "iPhone 16 Pro Max 256GB"
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  stockMovements StockMovement[] // HISTORY: Every +/- that happened to this client
-  clientStocks   ClientStock[]   // BALANCE: The actual current totals for this client
-  createdAt  DateTime @default(now())
+  id             String          @id @default(uuid())
+  name           String
+  categoryId     String
+  isActive       Boolean         @default(true) // <--- Add this
+  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  stockMovements StockMovement[]
+  clientStocks   ClientStock[]
+  createdAt      DateTime        @default(now())
 }
 
 model ClientStock {

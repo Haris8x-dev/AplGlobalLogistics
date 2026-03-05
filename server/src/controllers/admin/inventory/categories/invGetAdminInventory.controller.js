@@ -1,4 +1,4 @@
-import prisma from "../../../config/db.js";
+import prisma from "../../../../config/db.js";
 
 // 4. [ADMIN MASTER VIEW] - Shows Everything (Active + Inactive)
 export const getAdminInventory = async (req, res) => {

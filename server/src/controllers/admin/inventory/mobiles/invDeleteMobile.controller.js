@@ -1,4 +1,4 @@
-import prisma from "../../../config/db.js";
+import prisma from "../../../../config/db.js";
 
 // 5. Delete a specific Mobile Model
 export const deleteMobileModel = async (req, res) => {

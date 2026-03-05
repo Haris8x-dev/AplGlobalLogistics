@@ -1,4 +1,4 @@
-import prisma from "../../../config/db.js";
+import prisma from "../../../../config/db.js";
 
 // 5. Get Categories with their Models (Filtered by isActive)
 export const getActiveInventory = async (req, res) => {

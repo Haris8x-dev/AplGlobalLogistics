@@ -1,11 +1,19 @@
 import express from 'express';
 
-import { addCategory } from '../../controllers/admin/inventory/invAddCat.controller.js';
-import { toggleCategoryStatus } from '../../controllers/admin/inventory/invCatStatus.controller.js';
-import { addMobileModel } from '../../controllers/admin/inventory/invAddMobile.controller.js';
-import { getActiveInventory } from '../../controllers/admin/inventory/invGetActiveInventory.controller.js';
-import { getAdminInventory } from '../../controllers/admin/inventory/invGetAdminInventory.controller.js';
-import { deleteMobileModel } from '../../controllers/admin/inventory/invDeleteMobile.controller.js';
+// category controllers
+import { addCategory } from '../../controllers/admin/inventory/categories/invAddCat.controller.js';
+import { getModelsByCategory } from '../../controllers/admin/inventory/categories/invGetModelsByCat.controller.js';
+import { toggleCategoryStatus } from '../../controllers/admin/inventory/categories/invCatStatus.controller.js';
+import { updateCategory } from '../../controllers/admin/inventory/categories/invUpdateCat.controller.js';
+import { getAdminInventory } from '../../controllers/admin/inventory/categories/invGetAdminInventory.controller.js';
+import { getActiveInventory } from '../../controllers/admin/inventory/categories/invGetActiveInventory.controller.js';
+
+
+// mobile model controllers
+import { addMobileModel } from '../../controllers/admin/inventory/mobiles/invAddMobile.controller.js';
+import { deleteMobileModel } from '../../controllers/admin/inventory/mobiles/invDeleteMobile.controller.js';
+
+// middlewares
 import { isAdmin, isUserActive } from '../../middlewares/authMiddleware.js';
 
 const router = express.Router();
@@ -14,6 +22,11 @@ const router = express.Router();
 // 1. Category Routes
 router.post('/category', isAdmin, isUserActive, addCategory);
 router.patch('/category/status/:id', isAdmin, isUserActive, toggleCategoryStatus);
+router.patch('/category/:id', isAdmin, isUserActive, updateCategory);
+
+// Fetch models by category for dropdowns
+router.get('/category/:categoryId/models', getModelsByCategory);
+
 
 // 2. Mobile Model Routes
 router.post('/model', isAdmin, isUserActive, addMobileModel);
