@@ -29,7 +29,7 @@ router.get('/category/:categoryId/models', getModelsByCategory);
 
 
 // 2. Mobile Model Routes
-router.post('/model', isAdmin, isUserActive, addMobileModel);
+router.post('/model', addMobileModel);
 
 // 3. View Routes
 // Use this for the Admin Management Page
