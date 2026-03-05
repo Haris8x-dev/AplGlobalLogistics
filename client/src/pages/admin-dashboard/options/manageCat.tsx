@@ -39,6 +39,10 @@ const ManageCat: React.FC = () => {
     const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
     const [editingCategoryName, setEditingCategoryName] = useState("");
 
+    // Selection mode for export
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+
     // Fetch all categories
     const fetchCategories = async () => {
         try {
@@ -211,6 +215,107 @@ const ManageCat: React.FC = () => {
         XLSX.writeFile(workbook, fileName);
     };
 
+    // Export models of selected category
+    const exportModelsToExcel = () => {
+        if (!selectedCategoryId) {
+            setError("Please select a category first");
+            setTimeout(() => setError(""), 3000);
+            return;
+        }
+
+        const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
+        if (!selectedCategory) {
+            setError("Selected category not found");
+            setTimeout(() => setError(""), 3000);
+            return;
+        }
+
+        const exportData: any[] = [];
+
+        selectedCategory.models.forEach((model) => {
+            exportData.push({
+                "Category Name": selectedCategory.name,
+                "Category Status": selectedCategory.isActive ? "Active" : "Inactive",
+                "Model Name": model.name,
+                "Model Status": model.isActive ? "Active" : "Inactive",
+                "Category Created Date": new Date(selectedCategory.createdAt).toLocaleDateString()
+            });
+        });
+
+        if (exportData.length === 0) {
+            setError(`No models found in ${selectedCategory.name}`);
+            setTimeout(() => setError(""), 3000);
+            return;
+        }
+
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Models");
+
+        const columnWidths = [
+            { wch: 30 }, // Category Name
+            { wch: 15 }, // Category Status
+            { wch: 35 }, // Model Name
+            { wch: 15 }, // Model Status
+            { wch: 20 }  // Category Created Date
+        ];
+        worksheet['!cols'] = columnWidths;
+
+        const fileName = `${selectedCategory.name}_Models_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(workbook, fileName);
+
+        setSuccess(`Exported ${exportData.length} models from ${selectedCategory.name}!`);
+        setTimeout(() => setSuccess(""), 3000);
+
+        // Reset selection mode
+        setSelectionMode(false);
+        setSelectedCategoryId(null);
+    };
+
+    // Handle selection mode toggle
+    const handleSelectionToggle = () => {
+        if (selectionMode) {
+            // Deselect
+            setSelectionMode(false);
+            setSelectedCategoryId(null);
+        } else {
+            // Select
+            setSelectionMode(true);
+        }
+    };
+
+    // Handle category selection
+    const handleCategorySelect = (categoryId: string) => {
+        if (selectedCategoryId === categoryId) {
+            setSelectedCategoryId(null);
+        } else {
+            setSelectedCategoryId(categoryId);
+        }
+    };
+
+    // Get button config based on state
+    const getExportButtonConfig = () => {
+        if (!selectionMode) {
+            return {
+                label: "Select",
+                onClick: handleSelectionToggle,
+                className: "bg-blue-600 hover:bg-blue-700"
+            };
+        } else if (selectedCategoryId) {
+            return {
+                label: "Export Model Based",
+                onClick: exportModelsToExcel,
+                className: "bg-green-600 hover:bg-green-700"
+            };
+        } else {
+            return {
+                label: "Deselect",
+                onClick: handleSelectionToggle,
+                className: "bg-red-600 hover:bg-red-700"
+            };
+        }
+    };
+
     return (
         <div className="p-8 min-h-screen">
             {/* Header */}
@@ -261,10 +366,19 @@ const ManageCat: React.FC = () => {
                         onClick={exportToExcel}
                         disabled={categories.length === 0}
                         className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Export all categories to Excel"
+                        title="Export categories summary to Excel"
                     >
                         <FileSpreadsheet size={20} />
-                        Export as Excel
+                        Export Categories
+                    </button>
+                    <button
+                        onClick={getExportButtonConfig().onClick}
+                        disabled={categories.length === 0}
+                        className={`flex items-center gap-2 px-6 py-3 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed ${getExportButtonConfig().className}`}
+                        title={selectionMode && !selectedCategoryId ? "Select a category or click to deselect" : selectionMode ? "Export models of selected category" : "Select a category to export its models"}
+                    >
+                        <FileSpreadsheet size={20} />
+                        {getExportButtonConfig().label}
                     </button>
                 </div>
             )}
@@ -345,8 +459,33 @@ const ManageCat: React.FC = () => {
                             return (
                                 <div
                                     key={category.id}
-                                    className="bg-slate-800/30 backdrop-blur-xl border border-white/5 rounded-xl p-4 hover:border-[var(--apl-cyan)]/20 transition-all"
+                                    className={`bg-slate-800/30 backdrop-blur-xl border rounded-xl p-4 transition-all relative ${selectedCategoryId === category.id
+                                            ? "border-green-500/50 shadow-lg shadow-green-500/20"
+                                            : selectionMode
+                                                ? "border-blue-500/30 hover:border-blue-500/50 cursor-pointer"
+                                                : "border-white/5 hover:border-[var(--apl-cyan)]/20"
+                                        }`}
+                                    onClick={() => selectionMode && !isEditing && handleCategorySelect(category.id)}
                                 >
+                                    {/* Checkbox for selection mode */}
+                                    {selectionMode && (
+                                        <div className="absolute top-4 right-4 z-10">
+                                            <div
+                                                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${selectedCategoryId === category.id
+                                                        ? "bg-green-500 border-green-500"
+                                                        : "bg-slate-900/60 border-slate-600 hover:border-blue-400"
+                                                    }`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleCategorySelect(category.id);
+                                                }}
+                                            >
+                                                {selectedCategoryId === category.id && (
+                                                    <Check size={14} className="text-white" />
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                     {/* Header */}
                                     <div className="flex items-start justify-between mb-3">
                                         <div className="flex items-center gap-2 flex-1">
@@ -391,15 +530,18 @@ const ManageCat: React.FC = () => {
                                                     <X size={14} />
                                                 </button>
                                             </div>
-                                        ) : (
+                                        ) : !selectionMode ? (
                                             <button
-                                                onClick={() => startEditCategory(category)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    startEditCategory(category);
+                                                }}
                                                 className="p-1 hover:bg-white/5 rounded transition-all"
                                                 title="Edit name"
                                             >
                                                 <Edit2 size={14} className="text-slate-400" />
                                             </button>
-                                        )}
+                                        ) : null}
                                     </div>
 
                                     {/* Stats - Smaller */}
@@ -421,25 +563,33 @@ const ManageCat: React.FC = () => {
                                     </div>
 
                                     {/* Actions */}
-                                    <div className="flex flex-col gap-2">
-                                        <button
-                                            onClick={() => toggleCategoryExpansion(category.id)}
-                                            className="flex items-center justify-center gap-2 px-3 py-1.5 bg-[var(--apl-cyan)]/10 text-[var(--apl-cyan)] hover:bg-[var(--apl-cyan)]/20 rounded-lg transition-all text-xs"
-                                        >
-                                            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                            {isExpanded ? "Hide Models" : "View Models"}
-                                        </button>
-                                        <button
-                                            onClick={() => handleToggleStatus(category.id)}
-                                            className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs ${category.isActive
-                                                ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                                                : "bg-green-500/10 text-green-400 hover:bg-green-500/20"
-                                                }`}
-                                        >
-                                            <Power size={14} />
-                                            {category.isActive ? "Deactivate" : "Activate"}
-                                        </button>
-                                    </div>
+                                    {!selectionMode && (
+                                        <div className="flex flex-col gap-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleCategoryExpansion(category.id);
+                                                }}
+                                                className="flex items-center justify-center gap-2 px-3 py-1.5 bg-[var(--apl-cyan)]/10 text-[var(--apl-cyan)] hover:bg-[var(--apl-cyan)]/20 rounded-lg transition-all text-xs"
+                                            >
+                                                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                                {isExpanded ? "Hide Models" : "View Models"}
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleToggleStatus(category.id);
+                                                }}
+                                                className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs ${category.isActive
+                                                    ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                                                    : "bg-green-500/10 text-green-400 hover:bg-green-500/20"
+                                                    }`}
+                                            >
+                                                <Power size={14} />
+                                                {category.isActive ? "Deactivate" : "Activate"}
+                                            </button>
+                                        </div>
+                                    )}
 
                                     {/* Models Dropdown */}
                                     {isExpanded && (
@@ -456,12 +606,12 @@ const ManageCat: React.FC = () => {
                                                             className="flex items-center justify-between px-2 py-1.5 bg-slate-900/40 rounded text-xs hover:bg-slate-900/60 transition-all"
                                                         >
                                                             <span className="text-white">{model.name}</span>
-                                                            {/* <span className={`px-1.5 py-0.5 rounded text-[10px] ${model.isActive
+                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] ${model.isActive
                                                                 ? "bg-green-500/10 text-green-400"
                                                                 : "bg-red-500/10 text-red-400"
                                                                 }`}>
                                                                 {model.isActive ? "Active" : "Inactive"}
-                                                            </span> */}
+                                                            </span>
                                                         </div>
                                                     ))}
                                                 </div>
