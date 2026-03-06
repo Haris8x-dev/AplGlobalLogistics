@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Plus, Power, X, Save, FolderTree, Search, FileSpreadsheet, ChevronDown, ChevronUp, Edit2, Check } from "lucide-react";
 import * as XLSX from "xlsx";
+import { toast } from "react-toastify";
 
 interface Model {
     id: string;
@@ -20,8 +21,6 @@ interface Category {
 const ManageCat: React.FC = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
 
     // Search states
     const [searchName, setSearchName] = useState("");
@@ -51,9 +50,8 @@ const ManageCat: React.FC = () => {
                 withCredentials: true
             });
             setCategories(response.data.inventory);
-            setError("");
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to fetch categories");
+            toast.error(err.response?.data?.message || "Failed to fetch categories");
         } finally {
             setLoading(false);
         }
@@ -78,13 +76,11 @@ const ManageCat: React.FC = () => {
                 { name: categoryName },
                 { withCredentials: true }
             );
-            setSuccess("Category added successfully!");
+            toast.success("Category added successfully!");
             resetForm();
             await fetchCategories();
-            setTimeout(() => setSuccess(""), 3000);
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to add category");
-            setTimeout(() => setError(""), 3000);
+            toast.error(err.response?.data?.message || "Failed to add category");
         }
     };
 
@@ -96,12 +92,10 @@ const ManageCat: React.FC = () => {
                 {},
                 { withCredentials: true }
             );
-            setSuccess("Category status updated!");
+            toast.success("Category status updated!");
             await fetchCategories();
-            setTimeout(() => setSuccess(""), 3000);
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to toggle status");
-            setTimeout(() => setError(""), 3000);
+            toast.error(err.response?.data?.message || "Failed to toggle status");
         }
     };
 
@@ -129,7 +123,7 @@ const ManageCat: React.FC = () => {
                         [categoryId]: response.data.models || []
                     });
                 } catch (err: any) {
-                    setError(err.response?.data?.message || "Failed to fetch models");
+                    toast.error(err.response?.data?.message || "Failed to fetch models");
                 } finally {
                     const newLoading = new Set(loadingModels);
                     newLoading.delete(categoryId);
@@ -148,7 +142,7 @@ const ManageCat: React.FC = () => {
     // Update category name
     const handleUpdateCategory = async (categoryId: string) => {
         if (!editingCategoryName.trim()) {
-            setError("Category name cannot be empty");
+            toast.error("Category name cannot be empty");
             return;
         }
 
@@ -158,7 +152,7 @@ const ManageCat: React.FC = () => {
                 { name: editingCategoryName },
                 { withCredentials: true }
             );
-            setSuccess("Category name updated!");
+            toast.success("Category name updated!");
             setEditingCategoryId(null);
             setEditingCategoryName("");
 
@@ -169,10 +163,8 @@ const ManageCat: React.FC = () => {
 
             // Refresh categories list
             await fetchCategories();
-            setTimeout(() => setSuccess(""), 3000);
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to update category");
-            setTimeout(() => setError(""), 3000);
+            toast.error(err.response?.data?.message || "Failed to update category");
         }
     };
 
@@ -218,15 +210,13 @@ const ManageCat: React.FC = () => {
     // Export models of selected category
     const exportModelsToExcel = () => {
         if (!selectedCategoryId) {
-            setError("Please select a category first");
-            setTimeout(() => setError(""), 3000);
+            toast.error("Please select a category first");
             return;
         }
 
         const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
         if (!selectedCategory) {
-            setError("Selected category not found");
-            setTimeout(() => setError(""), 3000);
+            toast.error("Selected category not found");
             return;
         }
 
@@ -243,8 +233,7 @@ const ManageCat: React.FC = () => {
         });
 
         if (exportData.length === 0) {
-            setError(`No models found in ${selectedCategory.name}`);
-            setTimeout(() => setError(""), 3000);
+            toast.error(`No models found in ${selectedCategory.name}`);
             return;
         }
 
@@ -264,8 +253,7 @@ const ManageCat: React.FC = () => {
         const fileName = `${selectedCategory.name}_Models_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
         XLSX.writeFile(workbook, fileName);
 
-        setSuccess(`Exported ${exportData.length} models from ${selectedCategory.name}!`);
-        setTimeout(() => setSuccess(""), 3000);
+        toast.success(`Exported ${exportData.length} models from ${selectedCategory.name}!`);
 
         // Reset selection mode
         setSelectionMode(false);
@@ -326,31 +314,19 @@ const ManageCat: React.FC = () => {
                 <p className="text-slate-400">Organize and manage device categories</p>
             </div>
 
-            {/* Alerts */}
-            {error && (
-                <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-                    {error}
-                </div>
-            )}
-            {success && (
-                <div className="mb-4 p-4 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 text-sm">
-                    {success}
-                </div>
-            )}
-
             {/* Search Filter */}
-            <div className="mb-6">
-                <div className="relative max-w-md">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                    <input
-                        type="text"
-                        placeholder="Search categories by name..."
-                        value={searchName}
-                        onChange={(e) => setSearchName(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-800/30 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] focus:ring-1 focus:ring-[var(--apl-cyan)]/20 outline-none transition-all placeholder:text-slate-500"
-                    />
+                <div className="mb-6">
+                    <div className="relative max-w-md">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                        <input
+                            type="text"
+                            placeholder="Search categories by name..."
+                            value={searchName}
+                            onChange={(e) => setSearchName(e.target.value)}
+                            className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-800/30 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] focus:ring-1 focus:ring-[var(--apl-cyan)]/20 outline-none transition-all placeholder:text-slate-500"
+                        />
+                    </div>
                 </div>
-            </div>
 
             {/* Action Buttons */}
             {!showAddForm && (
@@ -460,10 +436,10 @@ const ManageCat: React.FC = () => {
                                 <div
                                     key={category.id}
                                     className={`bg-slate-800/30 backdrop-blur-xl border rounded-xl p-4 transition-all relative ${selectedCategoryId === category.id
-                                            ? "border-green-500/50 shadow-lg shadow-green-500/20"
-                                            : selectionMode
-                                                ? "border-blue-500/30 hover:border-blue-500/50 cursor-pointer"
-                                                : "border-white/5 hover:border-[var(--apl-cyan)]/20"
+                                        ? "border-green-500/50 shadow-lg shadow-green-500/20"
+                                        : selectionMode
+                                            ? "border-blue-500/30 hover:border-blue-500/50 cursor-pointer"
+                                            : "border-white/5 hover:border-[var(--apl-cyan)]/20"
                                         }`}
                                     onClick={() => selectionMode && !isEditing && handleCategorySelect(category.id)}
                                 >
@@ -472,8 +448,8 @@ const ManageCat: React.FC = () => {
                                         <div className="absolute top-4 right-4 z-10">
                                             <div
                                                 className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${selectedCategoryId === category.id
-                                                        ? "bg-green-500 border-green-500"
-                                                        : "bg-slate-900/60 border-slate-600 hover:border-blue-400"
+                                                    ? "bg-green-500 border-green-500"
+                                                    : "bg-slate-900/60 border-slate-600 hover:border-blue-400"
                                                     }`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();

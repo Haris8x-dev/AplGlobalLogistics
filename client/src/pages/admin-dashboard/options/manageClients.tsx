@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Plus, Edit, Power, X, Save, Building2, User, Mail, Phone, MapPin, Briefcase, Search, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
+import { toast } from "react-toastify";
 
 interface Client {
     id: string;
@@ -27,8 +28,6 @@ interface ClientFormData {
 const ManageClients: React.FC = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
 
     // Search states
     const [searchName, setSearchName] = useState("");
@@ -54,9 +53,8 @@ const ManageClients: React.FC = () => {
                 withCredentials: true
             });
             setClients(response.data.clients);
-            setError("");
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to fetch clients");
+            toast.error(err.response?.data?.message || "Failed to fetch clients");
         } finally {
             setLoading(false);
         }
@@ -87,12 +85,11 @@ const ManageClients: React.FC = () => {
             await axios.post("http://localhost:5000/api/admin/clients/add", formData, {
                 withCredentials: true
             });
-            setSuccess("Client added successfully!");
+            toast.success("Client added successfully!");
             resetForm();
             fetchClients();
-            setTimeout(() => setSuccess(""), 3000);
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to add client");
+            toast.error(err.response?.data?.message || "Failed to add client");
         }
     };
 
@@ -107,12 +104,11 @@ const ManageClients: React.FC = () => {
                 formData,
                 { withCredentials: true }
             );
-            setSuccess("Client updated successfully!");
+            toast.success("Client updated successfully!");
             resetForm();
             fetchClients();
-            setTimeout(() => setSuccess(""), 3000);
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to update client");
+            toast.error(err.response?.data?.message || "Failed to update client");
         }
     };
 
@@ -124,11 +120,10 @@ const ManageClients: React.FC = () => {
                 {},
                 { withCredentials: true }
             );
-            setSuccess("Client status updated!");
+            toast.success("Client status updated!");
             fetchClients();
-            setTimeout(() => setSuccess(""), 3000);
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to toggle status");
+            toast.error(err.response?.data?.message || "Failed to toggle status");
         }
     };
 
@@ -208,18 +203,6 @@ const ManageClients: React.FC = () => {
                 </h1>
                 <p className="text-slate-400">Add, edit, and manage your client portfolio</p>
             </div>
-
-            {/* Alerts */}
-            {error && (
-                <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-                    {error}
-                </div>
-            )}
-            {success && (
-                <div className="mb-4 p-4 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 text-sm">
-                    {success}
-                </div>
-            )}
 
             {/* Search Filters */}
             <div className="mb-6 grid grid-cols-2 gap-4">
