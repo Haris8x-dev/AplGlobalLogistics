@@ -12,6 +12,7 @@ export const getAuth = async (req, res) => {
                 email: true,
                 phoneNumber: true,
                 role: true,
+                isActive: true,
                 createdAt: true,
             }
         });

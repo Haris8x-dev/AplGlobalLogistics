@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Gatekeeper from "./pages/Gatekeeper/Gatekeeper";
 import IdentitySelection from "./pages/IdentitySelection/IdentitySelection";
 import AdminLogin from "./pages/admin-login/AdminLogin"; // Added
@@ -35,11 +37,11 @@ function App() {
       path: "/employee-login",
       element: <EmployeeLogin />,
     },
-     {
+    {
       path: "/admin-dashboard",
       element: <AdminDashboard />,
     },
-     {
+    {
       path: "/employee-dashboard",
       element: <AdminDashboard />,
     },
@@ -52,11 +54,21 @@ function App() {
 
   // LEVEL 1 SECURITY: The System Gatekeeper
   if (!isAuthorized) {
-    return <Gatekeeper onUnlock={() => setIsAuthorized(true)} />;
+    return (
+      <>
+        <Gatekeeper onUnlock={() => setIsAuthorized(true)} />
+        <ToastContainer position="top-right" autoClose={3000} theme="dark" />
+      </>
+    );
   }
 
   // LEVEL 2: The Router (Selection -> Login -> Dashboard)
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <ToastContainer position="top-right" autoClose={3000} theme="dark" />
+    </>
+  );
 }
 
 export default App;

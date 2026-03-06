@@ -19,6 +19,7 @@ import {
     RefreshCw
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { toast } from "react-toastify";
 
 interface User {
     id: string;
@@ -35,8 +36,6 @@ type TabType = "ALL" | "ADMIN" | "EMPLOYEE";
 const ManageUsers: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
 
     // Tab state
     const [activeTab, setActiveTab] = useState<TabType>("ALL");
@@ -83,9 +82,8 @@ const ManageUsers: React.FC = () => {
                 ...response.data.data.employees
             ];
             setUsers(allUsers);
-            setError("");
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to fetch users");
+            toast.error(err.response?.data?.message || "Failed to fetch users");
         } finally {
             setLoading(false);
         }
@@ -117,13 +115,11 @@ const ManageUsers: React.FC = () => {
                 formData,
                 { withCredentials: true }
             );
-            setSuccess("User created successfully!");
+            toast.success("User created successfully!");
             resetForm();
             await fetchUsers();
-            setTimeout(() => setSuccess(""), 3000);
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to create user");
-            setTimeout(() => setError(""), 3000);
+            toast.error(err.response?.data?.message || "Failed to create user");
         }
     };
 
@@ -135,12 +131,10 @@ const ManageUsers: React.FC = () => {
                 {},
                 { withCredentials: true }
             );
-            setSuccess("User status updated!");
+            toast.success("User status updated!");
             await fetchUsers();
-            setTimeout(() => setSuccess(""), 3000);
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to toggle status");
-            setTimeout(() => setError(""), 3000);
+            toast.error(err.response?.data?.message || "Failed to toggle status");
         }
     };
 
@@ -174,7 +168,7 @@ const ManageUsers: React.FC = () => {
                 updatePayload,
                 { withCredentials: true }
             );
-            setSuccess("User updated successfully!");
+            toast.success("User updated successfully!");
             setEditingUserId(null);
             setEditFormData({
                 fullName: "",
@@ -183,10 +177,8 @@ const ManageUsers: React.FC = () => {
                 password: ""
             });
             await fetchUsers();
-            setTimeout(() => setSuccess(""), 3000);
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to update user");
-            setTimeout(() => setError(""), 3000);
+            toast.error(err.response?.data?.message || "Failed to update user");
         }
     };
 
@@ -211,8 +203,7 @@ const ManageUsers: React.FC = () => {
     // Update user role
     const handleUpdateRole = async () => {
         if (newRole === "ADMIN" && !roleSecretCode) {
-            setError("Secret code is required for admin role");
-            setTimeout(() => setError(""), 3000);
+            toast.error("Secret code is required for admin role");
             return;
         }
 
@@ -227,14 +218,12 @@ const ManageUsers: React.FC = () => {
                 payload,
                 { withCredentials: true }
             );
-            setSuccess("User role updated successfully!");
+            toast.success("User role updated successfully!");
             setChangingRoleUserId(null);
             setRoleSecretCode("");
             await fetchUsers();
-            setTimeout(() => setSuccess(""), 3000);
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to update role");
-            setTimeout(() => setError(""), 3000);
+            toast.error(err.response?.data?.message || "Failed to update role");
         }
     };
 
@@ -301,25 +290,13 @@ const ManageUsers: React.FC = () => {
                 <p className="text-slate-400">Manage system users and permissions</p>
             </div>
 
-            {/* Alerts */}
-            {error && (
-                <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-                    {error}
-                </div>
-            )}
-            {success && (
-                <div className="mb-4 p-4 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 text-sm">
-                    {success}
-                </div>
-            )}
-
             {/* Tabs */}
             <div className="mb-6 flex items-center gap-2">
                 <button
                     onClick={() => setActiveTab("ALL")}
                     className={`px-6 py-3 rounded-xl font-medium transition-all ${activeTab === "ALL"
-                            ? "bg-[var(--apl-cyan)] text-white"
-                            : "bg-slate-800/30 text-slate-400 hover:bg-slate-800/50"
+                        ? "bg-[var(--apl-cyan)] text-white"
+                        : "bg-slate-800/30 text-slate-400 hover:bg-slate-800/50"
                         }`}
                 >
                     All Users ({users.length})
@@ -327,8 +304,8 @@ const ManageUsers: React.FC = () => {
                 <button
                     onClick={() => setActiveTab("ADMIN")}
                     className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${activeTab === "ADMIN"
-                            ? "bg-[var(--apl-cyan)] text-white"
-                            : "bg-slate-800/30 text-slate-400 hover:bg-slate-800/50"
+                        ? "bg-[var(--apl-cyan)] text-white"
+                        : "bg-slate-800/30 text-slate-400 hover:bg-slate-800/50"
                         }`}
                 >
                     <Shield size={18} />
@@ -337,8 +314,8 @@ const ManageUsers: React.FC = () => {
                 <button
                     onClick={() => setActiveTab("EMPLOYEE")}
                     className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${activeTab === "EMPLOYEE"
-                            ? "bg-[var(--apl-cyan)] text-white"
-                            : "bg-slate-800/30 text-slate-400 hover:bg-slate-800/50"
+                        ? "bg-[var(--apl-cyan)] text-white"
+                        : "bg-slate-800/30 text-slate-400 hover:bg-slate-800/50"
                         }`}
                 >
                     <UserCircle size={18} />
@@ -535,7 +512,7 @@ const ManageUsers: React.FC = () => {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {filteredUsers.map((user) => {
                             const isEditing = editingUserId === user.id;
                             const isChangingRole = changingRoleUserId === user.id;
@@ -543,24 +520,24 @@ const ManageUsers: React.FC = () => {
                             return (
                                 <div
                                     key={user.id}
-                                    className="bg-slate-800/30 backdrop-blur-xl border border-white/5 rounded-xl p-5 hover:border-[var(--apl-cyan)]/20 transition-all"
+                                    className="bg-slate-800/30 backdrop-blur-xl border border-white/5 rounded-xl p-4 hover:border-[var(--apl-cyan)]/20 transition-all"
                                 >
                                     {/* Header */}
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex items-center gap-3 flex-1">
-                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${user.role === "ADMIN"
-                                                    ? "bg-purple-500/10"
-                                                    : "bg-[var(--apl-cyan)]/10"
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex items-center gap-2 flex-1">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${user.role === "ADMIN"
+                                                ? "bg-purple-500/10"
+                                                : "bg-[var(--apl-cyan)]/10"
                                                 }`}>
                                                 {user.role === "ADMIN" ? (
-                                                    <Shield size={20} className="text-purple-400" />
+                                                    <Shield size={16} className="text-purple-400" />
                                                 ) : (
-                                                    <UserCircle size={20} className="text-[var(--apl-cyan)]" />
+                                                    <UserCircle size={16} className="text-[var(--apl-cyan)]" />
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <h3 className="text-lg font-bold text-white truncate">{user.fullName}</h3>
-                                                <p className="text-xs text-slate-500">
+                                                <h3 className="text-base font-bold text-white truncate">{user.fullName}</h3>
+                                                <p className="text-[10px] text-slate-500">
                                                     {new Date(user.createdAt).toLocaleDateString()}
                                                 </p>
                                             </div>
@@ -568,10 +545,10 @@ const ManageUsers: React.FC = () => {
                                         {!isEditing && !isChangingRole && (
                                             <button
                                                 onClick={() => startEditUser(user)}
-                                                className="p-2 hover:bg-white/5 rounded-lg transition-all"
+                                                className="p-1 hover:bg-white/5 rounded transition-all"
                                                 title="Edit user"
                                             >
-                                                <Edit2 size={16} className="text-slate-400" />
+                                                <Edit2 size={14} className="text-slate-400" />
                                             </button>
                                         )}
                                     </div>
@@ -579,28 +556,28 @@ const ManageUsers: React.FC = () => {
                                     {/* User Info */}
                                     {!isEditing && !isChangingRole && (
                                         <>
-                                            <div className="space-y-2 mb-4">
-                                                <div className="flex items-center gap-2 text-sm">
-                                                    <Mail size={14} className="text-slate-500" />
+                                            <div className="space-y-1.5 mb-3">
+                                                <div className="flex items-center gap-2 text-xs">
+                                                    <Mail size={12} className="text-slate-500" />
                                                     <span className="text-slate-300 truncate">{user.email}</span>
                                                 </div>
-                                                <div className="flex items-center gap-2 text-sm">
-                                                    <Phone size={14} className="text-slate-500" />
+                                                <div className="flex items-center gap-2 text-xs">
+                                                    <Phone size={12} className="text-slate-500" />
                                                     <span className="text-slate-300">{user.phoneNumber}</span>
                                                 </div>
                                             </div>
 
                                             {/* Role & Status Badges */}
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${user.role === "ADMIN"
-                                                        ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                                                        : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${user.role === "ADMIN"
+                                                    ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                                                    : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
                                                     }`}>
                                                     {user.role}
                                                 </span>
-                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${user.isActive
-                                                        ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                                                        : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${user.isActive
+                                                    ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                                                    : "bg-red-500/10 text-red-400 border border-red-500/20"
                                                     }`}>
                                                     {user.isActive ? "Active" : "Inactive"}
                                                 </span>
@@ -610,16 +587,16 @@ const ManageUsers: React.FC = () => {
                                             <div className="flex flex-col gap-2">
                                                 <button
                                                     onClick={() => startRoleChange(user)}
-                                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 rounded-lg transition-all text-sm"
+                                                    className="flex items-center justify-center gap-2 px-3 py-1.5 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 rounded-lg transition-all text-xs"
                                                 >
                                                     <RefreshCw size={14} />
                                                     Change Role
                                                 </button>
                                                 <button
                                                     onClick={() => handleToggleStatus(user.id)}
-                                                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all text-sm ${user.isActive
-                                                            ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                                                            : "bg-green-500/10 text-green-400 hover:bg-green-500/20"
+                                                    className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs ${user.isActive
+                                                        ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                                                        : "bg-green-500/10 text-green-400 hover:bg-green-500/20"
                                                         }`}
                                                 >
                                                     <Power size={14} />
@@ -631,48 +608,48 @@ const ManageUsers: React.FC = () => {
 
                                     {/* Edit Form */}
                                     {isEditing && (
-                                        <div className="space-y-3">
+                                        <div className="space-y-2">
                                             <input
                                                 type="text"
                                                 value={editFormData.fullName}
                                                 onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
-                                                className="w-full px-3 py-2 text-sm rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
+                                                className="w-full px-2 py-1.5 text-xs rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
                                                 placeholder="Full Name"
                                             />
                                             <input
                                                 type="email"
                                                 value={editFormData.email}
                                                 onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                                                className="w-full px-3 py-2 text-sm rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
+                                                className="w-full px-2 py-1.5 text-xs rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
                                                 placeholder="Email"
                                             />
                                             <input
                                                 type="tel"
                                                 value={editFormData.phoneNumber}
                                                 onChange={(e) => setEditFormData({ ...editFormData, phoneNumber: e.target.value })}
-                                                className="w-full px-3 py-2 text-sm rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
+                                                className="w-full px-2 py-1.5 text-xs rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
                                                 placeholder="Phone Number"
                                             />
                                             <input
                                                 type="password"
                                                 value={editFormData.password}
                                                 onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
-                                                className="w-full px-3 py-2 text-sm rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
+                                                className="w-full px-2 py-1.5 text-xs rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
                                                 placeholder="New Password (optional)"
                                             />
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => handleUpdateUser(user.id)}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg transition-all text-sm"
+                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg transition-all text-xs"
                                                 >
-                                                    <Check size={14} />
+                                                    <Check size={12} />
                                                     Save
                                                 </button>
                                                 <button
                                                     onClick={cancelEdit}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-all text-sm"
+                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-all text-xs"
                                                 >
-                                                    <X size={14} />
+                                                    <X size={12} />
                                                     Cancel
                                                 </button>
                                             </div>
@@ -681,10 +658,10 @@ const ManageUsers: React.FC = () => {
 
                                     {/* Role Change Form */}
                                     {isChangingRole && (
-                                        <div className="space-y-3">
-                                            <div className="p-3 bg-slate-900/60 rounded-lg">
-                                                <p className="text-sm text-slate-400 mb-2">Change role to:</p>
-                                                <p className="text-lg font-bold text-[var(--apl-cyan)]">
+                                        <div className="space-y-2">
+                                            <div className="p-2 bg-slate-900/60 rounded-lg">
+                                                <p className="text-xs text-slate-400 mb-1">Change role to:</p>
+                                                <p className="text-sm font-bold text-[var(--apl-cyan)]">
                                                     {newRole === "ADMIN" ? "Admin" : "Employee"}
                                                 </p>
                                             </div>
@@ -693,23 +670,23 @@ const ManageUsers: React.FC = () => {
                                                     type="password"
                                                     value={roleSecretCode}
                                                     onChange={(e) => setRoleSecretCode(e.target.value)}
-                                                    className="w-full px-3 py-2 text-sm rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
+                                                    className="w-full px-2 py-1.5 text-xs rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
                                                     placeholder="Admin Secret Code *"
                                                 />
                                             )}
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={handleUpdateRole}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg transition-all text-sm"
+                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg transition-all text-xs"
                                                 >
-                                                    <Check size={14} />
+                                                    <Check size={12} />
                                                     Confirm
                                                 </button>
                                                 <button
                                                     onClick={cancelRoleChange}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-all text-sm"
+                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-all text-xs"
                                                 >
-                                                    <X size={14} />
+                                                    <X size={12} />
                                                     Cancel
                                                 </button>
                                             </div>
