@@ -45,8 +45,4 @@ router.get('/admin-inventory', isAdmin, isUserActive, getAdminInventory);
 // Use this for Dropdowns/General Selection (Accessible to Employees too if needed)
 router.get('/active-inventory', getActiveInventory);
 
-// 4. Delete Mobile Model
-// URL: DELETE /api/admin/inventory/model/:id
-router.delete('/model/:id', isAdmin, isUserActive, deleteMobileModel);
-
 export default router;

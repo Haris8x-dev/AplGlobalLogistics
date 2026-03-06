@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Plus, Power, X, Save, Smartphone, Search, FileSpreadsheet, Edit2, Check, Trash2, FolderTree } from "lucide-react";
+import { Plus, Power, X, Save, Smartphone, Search, FileSpreadsheet, Edit2, Check, FolderTree } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
 
@@ -25,7 +25,6 @@ interface MobileModel {
 const ManageModels: React.FC = () => {
     const [models, setModels] = useState<MobileModel[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
-    const [allCategories, setAllCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Search states
@@ -42,10 +41,6 @@ const ManageModels: React.FC = () => {
     const [editingModelName, setEditingModelName] = useState("");
     const [editingCategoryId, setEditingCategoryId] = useState("");
 
-    // Delete confirmation modal
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [modelToDelete, setModelToDelete] = useState<MobileModel | null>(null);
-
     // Fetch all models
     const fetchModels = async () => {
         try {
@@ -54,25 +49,6 @@ const ManageModels: React.FC = () => {
                 withCredentials: true
             });
             setModels(response.data.models);
-
-            // Extract unique categories from models (for edit dropdown)
-            const uniqueCategories: Category[] = [];
-            const categoryIds = new Set<string>();
-
-            response.data.models.forEach((model: MobileModel) => {
-                if (!categoryIds.has(model.category.id)) {
-                    categoryIds.add(model.category.id);
-                    uniqueCategories.push({
-                        id: model.category.id,
-                        name: model.category.name,
-                        isActive: model.category.isActive
-                    });
-                }
-            });
-
-            // Sort categories by name
-            uniqueCategories.sort((a, b) => a.name.localeCompare(b.name));
-            setAllCategories(uniqueCategories);
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Failed to fetch models");
         } finally {
@@ -80,7 +56,7 @@ const ManageModels: React.FC = () => {
         }
     };
 
-    // Fetch active categories for dropdown
+    // Fetch active categories for add form dropdown
     const fetchCategories = async () => {
         try {
             const response = await axios.get("http://localhost:5000/api/admin/inventory/active-inventory", {
@@ -174,35 +150,6 @@ const ManageModels: React.FC = () => {
         setEditingModelId(null);
         setEditingModelName("");
         setEditingCategoryId("");
-    };
-
-    // Open delete confirmation modal
-    const openDeleteModal = (model: MobileModel) => {
-        setModelToDelete(model);
-        setShowDeleteModal(true);
-    };
-
-    // Close delete confirmation modal
-    const closeDeleteModal = () => {
-        setModelToDelete(null);
-        setShowDeleteModal(false);
-    };
-
-    // Confirm delete
-    const handleDeleteModel = async () => {
-        if (!modelToDelete) return;
-
-        try {
-            await axios.delete(
-                `http://localhost:5000/api/admin/inventory/model/${modelToDelete.id}`,
-                { withCredentials: true }
-            );
-            toast.success("Model deleted successfully!");
-            closeDeleteModal();
-            await fetchModels();
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || "Failed to delete model");
-        }
     };
 
     // Filter models based on search
@@ -459,9 +406,9 @@ const ManageModels: React.FC = () => {
                                                 onChange={(e) => setEditingCategoryId(e.target.value)}
                                                 className="w-full px-2 py-1.5 text-xs rounded bg-slate-900/60 border border-slate-700/50 text-white focus:outline-none focus:border-[var(--apl-cyan)]"
                                             >
-                                                {allCategories.map((cat) => (
+                                                {categories.map((cat) => (
                                                     <option key={cat.id} value={cat.id}>
-                                                        {cat.name} {!cat.isActive && "(Inactive)"}
+                                                        {cat.name}
                                                     </option>
                                                 ))}
                                             </select>
@@ -491,68 +438,22 @@ const ManageModels: React.FC = () => {
 
                                     {/* Actions */}
                                     {!isEditing && (
-                                        <div className="flex flex-col gap-2">
-                                            <button
-                                                onClick={() => handleToggleStatus(model.id)}
-                                                className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs ${model.isActive
-                                                    ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                                                    : "bg-green-500/10 text-green-400 hover:bg-green-500/20"
-                                                    }`}
-                                            >
-                                                <Power size={14} />
-                                                {model.isActive ? "Deactivate" : "Activate"}
-                                            </button>
-                                            <button
-                                                onClick={() => openDeleteModal(model)}
-                                                className="flex items-center justify-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-all text-xs"
-                                            >
-                                                <Trash2 size={14} />
-                                                Delete Model
-                                            </button>
-                                        </div>
+                                        <button
+                                            onClick={() => handleToggleStatus(model.id)}
+                                            className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs ${model.isActive
+                                                ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                                                : "bg-green-500/10 text-green-400 hover:bg-green-500/20"
+                                                }`}
+                                        >
+                                            <Power size={14} />
+                                            {model.isActive ? "Deactivate" : "Activate"}
+                                        </button>
                                     )}
                                 </div>
                             );
                         })}
                     </div>
                 </>
-            )}
-
-            {/* Delete Confirmation Modal */}
-            {showDeleteModal && modelToDelete && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-slate-800 border border-red-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-                        <div className="flex items-start gap-4 mb-6">
-                            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
-                                <Trash2 size={24} className="text-red-400" />
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="text-xl font-bold text-white mb-2">Delete Model?</h3>
-                                <p className="text-slate-400 text-sm mb-2">
-                                    Are you sure you want to delete <span className="text-white font-semibold">"{modelToDelete.name}"</span>?
-                                </p>
-                                <p className="text-slate-500 text-xs">
-                                    This action cannot be undone. Consider deactivating the model instead if you want to keep the data.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3">
-                            <button
-                                onClick={handleDeleteModel}
-                                className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all font-medium"
-                            >
-                                Yes, Delete
-                            </button>
-                            <button
-                                onClick={closeDeleteModal}
-                                className="flex-1 px-4 py-3 bg-slate-700/50 text-slate-300 rounded-xl hover:bg-slate-700 transition-all font-medium"
-                            >
-                                No, Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
             )}
         </div>
     );
