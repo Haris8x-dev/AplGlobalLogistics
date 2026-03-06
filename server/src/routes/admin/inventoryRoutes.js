@@ -12,6 +12,9 @@ import { getActiveInventory } from '../../controllers/admin/inventory/categories
 // mobile model controllers
 import { addMobileModel } from '../../controllers/admin/inventory/mobiles/invAddMobile.controller.js';
 import { deleteMobileModel } from '../../controllers/admin/inventory/mobiles/invDeleteMobile.controller.js';
+import { updateMobileModel } from '../../controllers/admin/inventory/mobiles/invUpdateMobile.controller.js';
+import { toggleMobileModelStatus } from '../../controllers/admin/inventory/mobiles/invMobileStatus.controller.js';
+import { getAllMobileModels } from '../../controllers/admin/inventory/mobiles/invGetAllMobiles.controller.js';
 
 // middlewares
 import { isAdmin, isUserActive } from '../../middlewares/authMiddleware.js';
@@ -30,6 +33,10 @@ router.get('/category/:categoryId/models', getModelsByCategory);
 
 // 2. Mobile Model Routes
 router.post('/model', addMobileModel);
+router.get('/models', getAllMobileModels);
+router.patch('/model/:id', isAdmin, isUserActive, updateMobileModel);
+router.patch('/model/status/:id', isAdmin, isUserActive, toggleMobileModelStatus);
+router.delete('/model/:id', isAdmin, isUserActive, deleteMobileModel);
 
 // 3. View Routes
 // Use this for the Admin Management Page
