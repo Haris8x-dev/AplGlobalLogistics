@@ -31,31 +31,61 @@ export const getRecentMovements = async (req, res) => {
             },
             include: {
                 // Show the employee's name
-                user: { 
-                    select: { fullName: true } 
+                user: {
+                    select: { fullName: true }
                 },
                 // Show the phone model name
-                model: { 
-                    select: { name: true } 
+                model: {
+                    select: { name: true }
                 },
                 // Show the owner of this specific ledger row
-                client: { 
-                    select: { companyName: true } 
+                client: {
+                    select: { companyName: true }
                 }
             }
         });
 
+        // Manually fetch fromClient and toClient names
+        const enrichedMovements = await Promise.all(
+            movements.map(async (movement) => {
+                let fromClient = null;
+                let toClient = null;
+
+                if (movement.fromClientId) {
+                    const from = await prisma.client.findUnique({
+                        where: { id: movement.fromClientId },
+                        select: { companyName: true }
+                    });
+                    fromClient = from;
+                }
+
+                if (movement.toClientId) {
+                    const to = await prisma.client.findUnique({
+                        where: { id: movement.toClientId },
+                        select: { companyName: true }
+                    });
+                    toClient = to;
+                }
+
+                return {
+                    ...movement,
+                    fromClient,
+                    toClient
+                };
+            })
+        );
+
         res.status(200).json({
             success: true,
-            count: movements.length,
-            data: movements
+            count: enrichedMovements.length,
+            data: enrichedMovements
         });
     } catch (error) {
         console.error("Error fetching recent movements:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: "Failed to fetch activity feed", 
-            error: error.message 
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch activity feed",
+            error: error.message
         });
     }
 };

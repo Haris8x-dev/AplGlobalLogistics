@@ -13,7 +13,7 @@ const SidePanel: React.FC<SidePanelProps> = ({ activeSection, setActiveSection }
         { id: "manageCat", label: "Manage Categories", icon: FolderTree },
         { id: "manageModels", label: "Manage Models", icon: Smartphone },
         { id: "manageUsers", label: "Manage Users", icon: Package },
-        { id: "wrapUp", label: "Wrap Up", icon: LogOut },
+        { id: "report", label: "Report", icon: LogOut },
     ];
 
     return (

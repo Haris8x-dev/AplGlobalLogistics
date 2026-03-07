@@ -6,7 +6,7 @@ import ManageClients from "../options/manageClients";
 import ManageCat from "../options/manageCat";
 import ManageModels from "../options/manageModels";
 import ManageUsers from "../options/manageUsers";
-import WrapUp from "../options/wrapUp";
+import Report from "../options/report"
 
 const Display = () => {
     const [activeSection, setActiveSection] = useState("dashboard");
@@ -23,8 +23,8 @@ const Display = () => {
                 return <ManageModels />;
             case "manageUsers":
                 return <ManageUsers />;
-            case "wrapUp":
-                return <WrapUp />;
+            case "report":
+                return <Report/>;
             default:
                 return <Dashboard />;
         }
