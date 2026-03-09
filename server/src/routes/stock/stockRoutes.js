@@ -3,6 +3,7 @@ import { addInitialStock } from '../../controllers/stock/addStock.controller.js'
 import { transferStock } from '../../controllers/stock/transferStock.controller.js';
 import { getMasterInventory, getClientInventory } from '../../controllers/stock/masterInventory.controller.js';
 import { getClientStockHistory, getRecentMovements } from '../../controllers/stock/clientStockHistory.controller.js';
+import { getClientsWithStock } from '../../controllers/stock/clientsWithStock.controller.js';
 import { verifyToken } from '../../middlewares/authMiddleware.js';
 
 const router = express.Router();
@@ -15,6 +16,9 @@ router.post('/add-initial', addInitialStock);
 
 // 2. Transfer (The Double-Entry Logic)
 router.post('/transfer', transferStock);
+
+// 2.5 Get Clients With Stock (For Transfer Interface)
+router.get('/clients-with-stock', getClientsWithStock);
 
 // 3. Manager Dashboard (The Master Result)
 router.get('/master-inventory', getMasterInventory);

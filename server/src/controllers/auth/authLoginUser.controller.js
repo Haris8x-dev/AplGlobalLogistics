@@ -9,7 +9,7 @@ export const loginUser = async (req, res) => {
         const user = await prisma.user.findUnique({ where: { email } });
 
         // 1. Check if user exists
-        if (!user) return res.status(401).json({ message: "Invalid credentials" });
+        if (!user) return res.status(401).json({ message: "User not found in the system" });
 
         // 2. NEW: Check if the account is active
         if (!user.isActive) {
@@ -20,7 +20,7 @@ export const loginUser = async (req, res) => {
 
         // 3. Verify Password
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
+        if (!isMatch) return res.status(401).json({ message: "Invalid credentials | Password incorrect" });
 
         // 4. Admin Secret Code Check
         if (user.role === 'ADMIN') {

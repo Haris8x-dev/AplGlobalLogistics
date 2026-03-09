@@ -1,10 +1,18 @@
-import prisma  from "../../config/db.js";
+import prisma from "../../config/db.js";
 
 export const addInitialStock = async (req, res) => {
     try {
         const { modelId, clientId, quantity, transferType, message } = req.body;
         const qty = parseInt(quantity);
         const activeUserId = req.user.id; // From verifyToken middleware
+
+        // Check if user is admin - admins cannot add stock
+        if (req.user.isAdmin === true) {
+            return res.status(403).json({
+                success: false,
+                error: "Admins are not allowed to add stock. Only employees can perform this action."
+            });
+        }
 
         const result = await prisma.$transaction(async (tx) => {
             // 1. Log the movement history

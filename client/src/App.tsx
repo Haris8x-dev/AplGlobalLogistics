@@ -4,10 +4,10 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Gatekeeper from "./pages/Gatekeeper/Gatekeeper";
 import IdentitySelection from "./pages/IdentitySelection/IdentitySelection";
-import AdminLogin from "./pages/admin-login/AdminLogin"; // Added
-import EmployeeLogin from "./pages/employee-login/EmployeeLogin"; // Added
-import AdminDashboard from "./pages/admin-dashboard/display/display"; // Added
-import EmployeeDashboard from "./pages/employee-dashboard/display/display"; // Added
+import AdminLogin from "./pages/admin-login/AdminLogin";
+import EmployeeLogin from "./pages/employee-login/EmployeeLogin";
+import AdminDashboard from "./pages/admin-dashboard/display/display";
+import EmployeeDashboard from "./pages/employee-dashboard/display/display";
 
 function App() {
   const [isAuthorized, setIsAuthorized] = useState(false);

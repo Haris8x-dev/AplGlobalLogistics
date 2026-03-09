@@ -8,7 +8,8 @@ import { getAuth } from '../../controllers/auth/authGetAuth.controller.js';
 import { toggleUserStatus } from '../../controllers/auth/authUserStatus.controller.js';
 import { updateUser } from '../../controllers/auth/authUpdateUser.controller.js';
 import { updateUserRole } from '../../controllers/auth/authUpdateUserRole.controller.js';
-import { isAdmin, isUserActive } from '../../middlewares/authMiddleware.js';
+import { verifyUser } from '../../controllers/auth/authVerifyUser.controller.js';
+import { isAdmin, isUserActive, verifyToken } from '../../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
@@ -21,6 +22,9 @@ router.get('/getAuth', isAdmin, getAuth);
 router.post('/login', loginUser);
 // Both Employees and Admins can logout
 router.post('/logout', logoutUser);
+
+// PROTECTED: Verify user authentication and role
+router.get('/verify', verifyToken, verifyUser);
 
 // URL: /api/auth/status/:id
 router.patch('/status/:id', isAdmin, isUserActive, toggleUserStatus);

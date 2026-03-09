@@ -1,117 +1,500 @@
-import React, { useState } from "react";
-import { ArrowRightLeft, Send } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { ArrowRightLeft, Send, ArrowLeft, Package, ChevronDown, X } from "lucide-react";
+import axios from "axios";
+import { toast } from "react-toastify";
+
+interface StockItem {
+    modelId: string;
+    modelName: string;
+    categoryId: string;
+    categoryName: string;
+    quantity: number;
+}
+
+interface Client {
+    id: string;
+    companyName: string;
+    contactName: string;
+    address: string;
+    email: string;
+    phone: string;
+    isActive: boolean;
+    stockSummary: StockItem[];
+}
+
+interface Category {
+    id: string;
+    name: string;
+    models: Model[];
+}
+
+interface Model {
+    id: string;
+    name: string;
+    availableQuantity: number;
+}
 
 const TransferStock = () => {
+    const [view, setView] = useState<"clientList" | "transferForm">("clientList");
+    const [clients, setClients] = useState<Client[]>([]);
+    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+
+    // Transfer Form State
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [models, setModels] = useState<Model[]>([]);
+    const [filteredModels, setFilteredModels] = useState<Model[]>([]);
+    const [showModelSuggestions, setShowModelSuggestions] = useState(false);
+    const modelInputRef = useRef<HTMLInputElement>(null);
+
     const [formData, setFormData] = useState({
-        fromClient: "",
-        toClient: "",
-        model: "",
+        fromClientId: "",
+        toClientId: "",
+        categoryId: "",
+        modelId: "",
+        modelSearch: "",
         quantity: "",
-        transferType: "TransferOut",
         message: "",
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        console.log("Transfer submitted:", formData);
-        // TODO: API call will go here
+    const [availableQuantity, setAvailableQuantity] = useState<number>(0);
+
+    // Fetch clients with stock on mount
+    useEffect(() => {
+        fetchClientsWithStock();
+    }, []);
+
+    // Extract categories from selected client's stock
+    useEffect(() => {
+        if (selectedClient) {
+            const uniqueCategories = new Map<string, Category>();
+
+            selectedClient.stockSummary.forEach((stock) => {
+                if (!uniqueCategories.has(stock.categoryId)) {
+                    uniqueCategories.set(stock.categoryId, {
+                        id: stock.categoryId,
+                        name: stock.categoryName,
+                        models: [],
+                    });
+                }
+
+                const category = uniqueCategories.get(stock.categoryId)!;
+                category.models.push({
+                    id: stock.modelId,
+                    name: stock.modelName,
+                    availableQuantity: stock.quantity,
+                });
+            });
+
+            setCategories(Array.from(uniqueCategories.values()));
+        }
+    }, [selectedClient]);
+
+    // Filter models when category changes
+    useEffect(() => {
+        if (formData.categoryId) {
+            const selectedCategory = categories.find((cat) => cat.id === formData.categoryId);
+            if (selectedCategory) {
+                setModels(selectedCategory.models);
+                setFilteredModels(selectedCategory.models);
+            }
+        } else {
+            setModels([]);
+            setFilteredModels([]);
+        }
+        // Reset model selection when category changes
+        setFormData((prev) => ({ ...prev, modelId: "", modelSearch: "", quantity: "" }));
+        setAvailableQuantity(0);
+    }, [formData.categoryId, categories]);
+
+    // Filter models based on search input
+    useEffect(() => {
+        if (formData.modelSearch) {
+            const filtered = models.filter((model) =>
+                model.name.toLowerCase().includes(formData.modelSearch.toLowerCase())
+            );
+            setFilteredModels(filtered);
+            setShowModelSuggestions(true);
+        } else {
+            setFilteredModels(models);
+            setShowModelSuggestions(false);
+        }
+    }, [formData.modelSearch, models]);
+
+    const fetchClientsWithStock = async () => {
+        try {
+            setLoading(true);
+            const response = await axios.get("http://localhost:5000/api/stock/clients-with-stock", {
+                withCredentials: true,
+            });
+            setClients(response.data.clients || []);
+        } catch (error: any) {
+            toast.error("Failed to fetch clients");
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
     };
 
+    const handleClientSelect = (client: Client) => {
+        if (client.stockSummary.length === 0) {
+            toast.warning(`${client.companyName} has no stock to transfer`);
+            return;
+        }
+        setSelectedClient(client);
+        setFormData((prev) => ({
+            ...prev,
+            fromClientId: client.id,
+            toClientId: "",
+            categoryId: "",
+            modelId: "",
+            modelSearch: "",
+            quantity: "",
+            message: "",
+        }));
+        setView("transferForm");
+    };
+
+    const handleBackToList = () => {
+        setView("clientList");
+        setSelectedClient(null);
+        setFormData({
+            fromClientId: "",
+            toClientId: "",
+            categoryId: "",
+            modelId: "",
+            modelSearch: "",
+            quantity: "",
+            message: "",
+        });
+        setCategories([]);
+        setModels([]);
+        setAvailableQuantity(0);
+    };
+
+    const handleModelSelect = (model: Model) => {
+        setFormData((prev) => ({
+            ...prev,
+            modelId: model.id,
+            modelSearch: model.name,
+        }));
+        setAvailableQuantity(model.availableQuantity);
+        setShowModelSuggestions(false);
+    };
+
+    const handleModelSearchChange = (value: string) => {
+        setFormData((prev) => ({
+            ...prev,
+            modelSearch: value,
+            modelId: "",
+        }));
+        setAvailableQuantity(0);
+    };
+
+    const clearModelSelection = () => {
+        setFormData((prev) => ({
+            ...prev,
+            modelId: "",
+            modelSearch: "",
+            quantity: "",
+        }));
+        setAvailableQuantity(0);
+        setShowModelSuggestions(false);
+        modelInputRef.current?.focus();
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!formData.toClientId || !formData.modelId || !formData.quantity) {
+            toast.warning("Please fill all required fields");
+            return;
+        }
+
+        const quantity = parseInt(formData.quantity);
+
+        if (quantity <= 0) {
+            toast.error("Quantity must be greater than 0");
+            return;
+        }
+
+        if (quantity > availableQuantity) {
+            toast.error(`Insufficient stock! Only ${availableQuantity} units available`);
+            return;
+        }
+
+        try {
+            setSubmitting(true);
+            const response = await axios.post(
+                "http://localhost:5000/api/stock/transfer",
+                {
+                    fromClientId: formData.fromClientId,
+                    toClientId: formData.toClientId,
+                    modelId: formData.modelId,
+                    quantity: quantity,
+                    transferType: "TransferOut",
+                    message: formData.message || undefined,
+                },
+                { withCredentials: true }
+            );
+
+            if (response.data.success) {
+                toast.success("Stock transferred successfully!");
+                // Reset and go back to client list
+                handleBackToList();
+                // Refresh client list
+                fetchClientsWithStock();
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || "Failed to transfer stock");
+            console.error(error);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // Get available clients for "To Client" dropdown (excluding selected client)
+    const getAvailableToClients = () => {
+        return clients.filter((client) => client.id !== selectedClient?.id);
+    };
+
+    // ==================== CLIENT LIST VIEW ====================
+    if (view === "clientList") {
+        return (
+            <div className="p-6 min-h-screen">
+                {/* Header */}
+                <div className="mb-6">
+                    <h1 className="text-3xl font-bold text-white mb-1">
+                        Transfer <span className="text-[var(--apl-cyan)]">Stock</span>
+                    </h1>
+                    <p className="text-slate-400 text-sm">Select a client to transfer stock from</p>
+                </div>
+
+                {/* Loading State */}
+                {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <div className="w-8 h-8 border-4 border-[var(--apl-cyan)]/30 border-t-[var(--apl-cyan)] rounded-full animate-spin"></div>
+                    </div>
+                ) : (
+                    <>
+                        {/* Clients Grid */}
+                        {clients.length === 0 ? (
+                            <div className="text-center py-12">
+                                <Package className="mx-auto text-slate-600 mb-4" size={48} />
+                                <p className="text-slate-400">No clients with stock found</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {clients.map((client) => (
+                                    <div
+                                        key={client.id}
+                                        onClick={() => handleClientSelect(client)}
+                                        className={`bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-xl p-6 transition-all cursor-pointer ${client.stockSummary.length === 0
+                                                ? "opacity-50 cursor-not-allowed"
+                                                : "hover:border-[var(--apl-cyan)]/50 hover:shadow-lg hover:shadow-[var(--apl-cyan)]/10"
+                                            }`}
+                                    >
+                                        {/* Client Info */}
+                                        <div className="mb-4 pb-4 border-b border-white/5">
+                                            <h3 className="text-lg font-semibold text-white mb-1">
+                                                {client.companyName}
+                                            </h3>
+                                            <p className="text-slate-400 text-xs mb-2">{client.contactName}</p>
+                                            <p className="text-slate-500 text-xs">{client.address}</p>
+                                        </div>
+
+                                        {/* Stock Summary */}
+                                        <div>
+                                            <p className="text-slate-400 text-xs uppercase tracking-wider mb-3">
+                                                Stock Inventory
+                                            </p>
+                                            {client.stockSummary.length === 0 ? (
+                                                <p className="text-slate-500 text-sm italic">No stock available</p>
+                                            ) : (
+                                                <div className="space-y-2 max-h-32 overflow-y-auto">
+                                                    {client.stockSummary.map((stock, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="flex items-center justify-between text-sm bg-slate-900/50 rounded-lg px-3 py-2"
+                                                        >
+                                                            <span className="text-slate-300 truncate flex-1">
+                                                                {stock.modelName}
+                                                            </span>
+                                                            <span className="text-[var(--apl-cyan)] font-semibold ml-2">
+                                                                {stock.quantity}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+        );
+    }
+
+    // ==================== TRANSFER FORM VIEW ====================
     return (
         <div className="p-6 min-h-screen">
-            {/* Header */}
-            <div className="mb-6">
-                <h1 className="text-3xl font-bold text-white mb-1">
-                    Transfer <span className="text-[var(--apl-cyan)]">Stock</span>
-                </h1>
-                <p className="text-slate-400 text-sm">Move inventory between clients</p>
+            {/* Header with Back Button */}
+            <div className="mb-6 flex items-center gap-4">
+                <button
+                    onClick={handleBackToList}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800/40 border border-white/5 rounded-lg text-slate-400 hover:text-white hover:border-[var(--apl-cyan)]/50 transition-all"
+                >
+                    <ArrowLeft size={18} />
+                    Back
+                </button>
+                <div>
+                    <h1 className="text-3xl font-bold text-white mb-1">
+                        Transfer <span className="text-[var(--apl-cyan)]">Stock</span>
+                    </h1>
+                    <p className="text-slate-400 text-sm">From: {selectedClient?.companyName}</p>
+                </div>
             </div>
 
             {/* Form Card */}
-            <div className="max-w-2xl bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-xl p-8">
-                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/5">
-                    <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center">
-                        <ArrowRightLeft className="text-purple-400" size={24} />
-                    </div>
-                    <div>
-                        <h2 className="text-xl font-semibold text-white">Stock Transfer</h2>
-                        <p className="text-xs text-slate-400">Transfer inventory from one client to another</p>
-                    </div>
-                </div>
-
+            <div className="bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-xl p-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* From Client */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                            From Client <span className="text-red-400">*</span>
-                        </label>
-                        <select
-                            value={formData.fromClient}
-                            onChange={(e) => setFormData({ ...formData, fromClient: e.target.value })}
-                            className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-[var(--apl-cyan)] transition-colors"
-                            required
-                        >
-                            <option value="">Select source client...</option>
-                            <option value="client1">ABC Corporation</option>
-                            <option value="client2">XYZ Enterprises</option>
-                            <option value="client3">Tech Solutions Inc.</option>
-                        </select>
-                    </div>
-
-                    {/* To Client */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                            To Client <span className="text-red-400">*</span>
-                        </label>
-                        <select
-                            value={formData.toClient}
-                            onChange={(e) => setFormData({ ...formData, toClient: e.target.value })}
-                            className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-[var(--apl-cyan)] transition-colors"
-                            required
-                        >
-                            <option value="">Select destination client...</option>
-                            <option value="client1">ABC Corporation</option>
-                            <option value="client2">XYZ Enterprises</option>
-                            <option value="client3">Tech Solutions Inc.</option>
-                        </select>
-                    </div>
-
-                    {/* Transfer Direction Indicator */}
-                    <div className="flex items-center justify-center py-2">
-                        <div className="flex items-center gap-3">
-                            <div className="px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
-                                <span className="text-red-400 font-medium text-sm">
-                                    {formData.fromClient || "Source"}
-                                </span>
+                    {/* Row 1: From Client (Disabled) and To Client */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* From Client (Read-only) */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                From Client <span className="text-slate-500">(Source)</span>
+                            </label>
+                            <div className="w-full px-4 py-4 bg-slate-900/70 border border-slate-700/50 rounded-lg text-slate-400 cursor-not-allowed">
+                                {selectedClient?.companyName}
                             </div>
-                            <ArrowRightLeft className="text-[var(--apl-cyan)]" size={24} />
-                            <div className="px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-lg">
-                                <span className="text-green-400 font-medium text-sm">
-                                    {formData.toClient || "Destination"}
-                                </span>
+                        </div>
+
+                        {/* To Client */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                To Client <span className="text-red-400">*</span>
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={formData.toClientId}
+                                    onChange={(e) => setFormData({ ...formData, toClientId: e.target.value })}
+                                    className="w-full px-4 py-4 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-[var(--apl-cyan)] transition-colors appearance-none"
+                                    required
+                                >
+                                    <option value="">Choose destination client...</option>
+                                    {getAvailableToClients().map((client) => (
+                                        <option key={client.id} value={client.id}>
+                                            {client.companyName}
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                                    size={20}
+                                />
                             </div>
                         </div>
                     </div>
 
-                    {/* Model Selection */}
+                    {/* Row 2: Category */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Select Model <span className="text-red-400">*</span>
+                            Select Category <span className="text-red-400">*</span>
                         </label>
-                        <select
-                            value={formData.model}
-                            onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                            className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-[var(--apl-cyan)] transition-colors"
-                            required
-                        >
-                            <option value="">Choose a model...</option>
-                            <option value="model1">iPhone 15 Pro</option>
-                            <option value="model2">Samsung Galaxy S24</option>
-                            <option value="model3">Google Pixel 8</option>
-                        </select>
+                        <div className="relative">
+                            <select
+                                value={formData.categoryId}
+                                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                                className="w-full px-4 py-4 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-[var(--apl-cyan)] transition-colors appearance-none"
+                                required
+                            >
+                                <option value="">Choose a category...</option>
+                                {categories.map((category) => (
+                                    <option key={category.id} value={category.id}>
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                                size={20}
+                            />
+                        </div>
                     </div>
 
-                    {/* Quantity */}
+                    {/* Row 3: Model Search - Full Width */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Search Model <span className="text-red-400">*</span>
+                        </label>
+                        <div className="relative">
+                            <input
+                                ref={modelInputRef}
+                                type="text"
+                                value={formData.modelSearch}
+                                onChange={(e) => handleModelSearchChange(e.target.value)}
+                                onFocus={() => setShowModelSuggestions(true)}
+                                placeholder={
+                                    formData.categoryId ? "Type to search models..." : "Select category first"
+                                }
+                                disabled={!formData.categoryId}
+                                className="w-full px-4 py-4 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-[var(--apl-cyan)] transition-colors pr-10"
+                                autoComplete="off"
+                                required
+                            />
+                            {formData.modelId && (
+                                <button
+                                    type="button"
+                                    onClick={clearModelSelection}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <X size={18} />
+                                </button>
+                            )}
+
+                            {/* Suggestions Dropdown */}
+                            {showModelSuggestions &&
+                                filteredModels.length > 0 &&
+                                formData.modelSearch &&
+                                !formData.modelId && (
+                                    <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                                        {filteredModels.map((model) => (
+                                            <button
+                                                key={model.id}
+                                                type="button"
+                                                onClick={() => handleModelSelect(model)}
+                                                className="w-full px-4 py-4 text-left hover:bg-slate-800 transition-colors text-slate-300 hover:text-white border-b border-slate-800 last:border-0 flex items-center justify-between"
+                                            >
+                                                <span>{model.name}</span>
+                                                <span className="text-[var(--apl-cyan)] text-sm font-medium">
+                                                    {model.availableQuantity} available
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                            {/* No Results Message */}
+                            {showModelSuggestions &&
+                                filteredModels.length === 0 &&
+                                formData.modelSearch &&
+                                formData.categoryId && (
+                                    <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-4 text-center text-slate-400 text-sm">
+                                        No models found matching "{formData.modelSearch}"
+                                    </div>
+                                )}
+                        </div>
+                        {formData.categoryId && models.length === 0 && (
+                            <p className="text-xs text-slate-500 mt-1">No models available in this category</p>
+                        )}
+                    </div>
+
+                    {/* Row 4: Quantity */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
                             Quantity <span className="text-red-400">*</span>
@@ -122,13 +505,19 @@ const TransferStock = () => {
                             onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                             placeholder="Enter quantity to transfer"
                             min="1"
-                            className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-[var(--apl-cyan)] transition-colors"
+                            max={availableQuantity}
+                            disabled={!formData.modelId}
+                            className="w-full px-4 py-4 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-[var(--apl-cyan)] transition-colors"
                             required
                         />
-                        <p className="text-xs text-slate-500 mt-1">Available: 150 units</p>
+                        {formData.modelId && (
+                            <p className="text-xs text-[var(--apl-cyan)] mt-1">
+                                Available: {availableQuantity} units
+                            </p>
+                        )}
                     </div>
 
-                    {/* Message */}
+                    {/* Row 5: Message - Full Width */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
                             Transfer Note (Optional)
@@ -138,18 +527,30 @@ const TransferStock = () => {
                             onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                             placeholder="Add transfer details or reason..."
                             rows={3}
-                            className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-[var(--apl-cyan)] transition-colors resize-none"
+                            className="w-full px-4 py-4 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-[var(--apl-cyan)] transition-colors resize-none"
                         />
                     </div>
 
                     {/* Submit Button */}
-                    <button
-                        type="submit"
-                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-medium"
-                    >
-                        <Send size={20} />
-                        Transfer Stock
-                    </button>
+                    <div className="flex justify-end">
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="flex items-center justify-center gap-2 px-8 py-4 bg-[var(--apl-cyan)] text-white rounded-lg hover:bg-[var(--apl-cyan)]/80 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {submitting ? (
+                                <>
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    Transferring...
+                                </>
+                            ) : (
+                                <>
+                                    <Send size={20} />
+                                    Transfer Stock
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>

@@ -27,6 +27,9 @@ const AdminLogin: React.FC = () => {
 
             // Success - redirect based on role
             if (response.data.role === "ADMIN") {
+                // Store authentication state
+                sessionStorage.setItem("apl_user_role", "ADMIN");
+                sessionStorage.setItem("apl_is_admin", "true");
                 navigate("/admin-dashboard");
             } else {
                 setError("Access denied: Admin privileges required");

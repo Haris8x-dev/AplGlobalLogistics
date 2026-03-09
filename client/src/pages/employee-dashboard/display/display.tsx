@@ -24,7 +24,7 @@ const Display = () => {
     };
 
     return (
-        <div className="flex h-screen bg-slate-950">
+        <div className="flex h-screen">
             <SidePanel activeSection={activeSection} setActiveSection={setActiveSection} />
             <div className="flex-1 overflow-auto">{renderSection()}</div>
         </div>

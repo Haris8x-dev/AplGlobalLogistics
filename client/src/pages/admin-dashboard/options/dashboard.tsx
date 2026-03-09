@@ -63,9 +63,9 @@ const Dashboard = () => {
             const currentMonth = today.getMonth();
             const currentYear = today.getFullYear();
 
-            // Initialize from day 1 of current month to today
+            // Initialize from day 1 of current month to last day of month
             const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
-            const daysInCurrentMonth = today.getDate();
+            const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
             for (let i = 0; i < daysInCurrentMonth; i++) {
                 const date = new Date(currentYear, currentMonth, i + 1);
