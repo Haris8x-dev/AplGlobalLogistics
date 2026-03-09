@@ -341,7 +341,7 @@ const Report = () => {
                     ) : filteredStocks.length === 0 ? (
                         <div className="text-center py-8 text-slate-400">No inventory found for this client</div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             {filteredStocks.map((stock) => (
                                 <button
                                     key={stock.id}
@@ -428,8 +428,8 @@ const Report = () => {
                                         <td className="py-3 px-4">
                                             <span
                                                 className={`px-2 py-1 rounded-full text-xs font-medium ${record.transferType === "INITIAL_LOAD"
-                                                        ? "bg-cyan-500/10 text-cyan-400"
-                                                        : "bg-purple-500/10 text-purple-400"
+                                                    ? "bg-cyan-500/10 text-cyan-400"
+                                                    : "bg-purple-500/10 text-purple-400"
                                                     }`}
                                             >
                                                 {record.transferType || "TRANSFER"}
