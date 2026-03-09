@@ -7,6 +7,7 @@ import IdentitySelection from "./pages/IdentitySelection/IdentitySelection";
 import AdminLogin from "./pages/admin-login/AdminLogin"; // Added
 import EmployeeLogin from "./pages/employee-login/EmployeeLogin"; // Added
 import AdminDashboard from "./pages/admin-dashboard/display/display"; // Added
+import EmployeeDashboard from "./pages/employee-dashboard/display/display"; // Added
 
 function App() {
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -43,7 +44,7 @@ function App() {
     },
     {
       path: "/employee-dashboard",
-      element: <AdminDashboard />,
+      element: <EmployeeDashboard />,
     },
     // Fallback: if user tries to access a non-existent route, send to /login
     {

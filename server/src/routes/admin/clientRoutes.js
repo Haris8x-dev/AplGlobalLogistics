@@ -12,7 +12,7 @@ const router = express.Router();
 router.post('/add', isAdmin, addClient);
 
 // get all clients (with optional query param to filter active clients)
-router.get('/all', isAdmin, getClients);
+router.get('/all', getClients);
 
 // Patch route to toggle client status (active/inactive) instead of deleting
 router.patch('/status/:id', isAdmin, toggleClientStatus); // Use PATCH for updates
