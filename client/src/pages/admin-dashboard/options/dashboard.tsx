@@ -201,7 +201,7 @@ const Dashboard = () => {
                         <Users className="text-orange-400" size={20} />
                     </div>
                     <h3 className="text-2xl font-bold text-white">{totalClients}</h3>
-                    <p className="text-slate-400 text-xs">Active Clients</p>
+                    <p className="text-slate-400 text-xs">Total Clients</p>
                 </div>
 
                 <div className="bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-xl p-4">
