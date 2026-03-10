@@ -2,7 +2,8 @@ import express from 'express';
 
 
 import { generateUser } from '../../controllers/auth/authGenUser.controller.js';
-import { loginUser } from '../../controllers/auth/authLoginUser.controller.js';
+import { loginAdmin } from '../../controllers/auth/authLoginAdmin.controller.js';
+import { loginEmployee } from '../../controllers/auth/authLoginEmp.controller.js';
 import { logoutUser } from '../../controllers/auth/authLogoutUser.controller.js';
 import { getAuth } from '../../controllers/auth/authGetAuth.controller.js';
 import { toggleUserStatus } from '../../controllers/auth/authUserStatus.controller.js';
@@ -18,8 +19,9 @@ router.post('/generate', isAdmin, generateUser);
 // PROTECTED: Only Admins can view the user lists
 router.get('/getAuth', isAdmin, getAuth);
 
-// PUBLIC: Anyone can attempt to login if they have credentials, but we will check if they are active in the loginUser controller
-router.post('/login', loginUser);
+// PUBLIC: Separate login routes for Admin and Employee
+router.post('/login/admin', loginAdmin);
+router.post('/login/employee', loginEmployee);
 // Both Employees and Admins can logout
 router.post('/logout', logoutUser);
 

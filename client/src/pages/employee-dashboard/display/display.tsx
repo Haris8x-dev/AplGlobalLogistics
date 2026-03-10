@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import SidePanel from "../options/sidePanel";
 import AddStock from "../options/addStock";
 import TransferStock from "../options/transferStock";
-import Inventory from "../options/inventory";
-import RecentActivity from "../options/recentActivity";
+// import Inventory from "../options/inventory";
+// import RecentActivity from "../options/recentActivity";
 
 const Display = () => {
     const [activeSection, setActiveSection] = useState("addStock");
@@ -14,10 +14,10 @@ const Display = () => {
                 return <AddStock />;
             case "transferStock":
                 return <TransferStock />;
-            case "inventory":
-                return <Inventory />;
-            case "recentActivity":
-                return <RecentActivity />;
+            // case "inventory":
+            //     return <Inventory />;
+            // case "recentActivity":
+            //     return <RecentActivity />;
             default:
                 return <AddStock />;
         }

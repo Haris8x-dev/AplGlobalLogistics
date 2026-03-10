@@ -15,7 +15,7 @@ const AdminLogin: React.FC = () => {
 
         try {
             const response = await axios.post(
-                "http://localhost:5000/api/auth/login",
+                "http://localhost:5000/api/auth/login/admin",
                 formData,
                 {
                     withCredentials: true, // Important for cookies
@@ -27,7 +27,7 @@ const AdminLogin: React.FC = () => {
 
             // Success - redirect based on role
             if (response.data.role === "ADMIN") {
-                // Store authentication state
+                // Store authentication state in sessionStorage
                 sessionStorage.setItem("apl_user_role", "ADMIN");
                 sessionStorage.setItem("apl_is_admin", "true");
                 navigate("/admin-dashboard");

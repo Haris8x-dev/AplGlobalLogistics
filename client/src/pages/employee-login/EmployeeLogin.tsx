@@ -15,7 +15,7 @@ const EmployeeLogin: React.FC = () => {
 
         try {
             const response = await axios.post(
-                "http://localhost:5000/api/auth/login",
+                "http://localhost:5000/api/auth/login/employee",
                 formData,
                 {
                     withCredentials: true, // Important for cookies
