@@ -1,16 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { toast } from "react-toastify";
 
 const AdminLogin: React.FC = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({ email: "", password: "", secretCode: "" });
-    const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError("");
         setLoading(true);
 
         try {
@@ -30,19 +29,20 @@ const AdminLogin: React.FC = () => {
                 // Store authentication state in sessionStorage
                 sessionStorage.setItem("apl_user_role", "ADMIN");
                 sessionStorage.setItem("apl_is_admin", "true");
+                toast.success("Login successful! Welcome, Administrator.");
                 navigate("/admin-dashboard");
             } else {
-                setError("Access denied: Admin privileges required");
+                toast.error("Access denied: Admin privileges required");
             }
         } catch (err: any) {
             console.error("Login Error:", err);
             // Axios puts server response in err.response.data
             if (err.response?.data?.message) {
-                setError(err.response.data.message);
+                toast.error(err.response.data.message);
             } else if (err.response) {
-                setError("Login failed. Please try again.");
+                toast.error("Login failed. Please try again.");
             } else {
-                setError("Server connection error. Please try again.");
+                toast.error("Server connection error. Please try again.");
             }
         } finally {
             setLoading(false);
@@ -69,12 +69,6 @@ const AdminLogin: React.FC = () => {
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6">
-                    {error && (
-                        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-                            {error}
-                        </div>
-                    )}
-
                     <div className="space-y-2">
                         <label className="block text-slate-400 text-[11px] uppercase tracking-wider ml-1">Administrator Email</label>
                         <input

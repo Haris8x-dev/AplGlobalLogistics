@@ -1,16 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { toast } from "react-toastify";
 
 const EmployeeLogin: React.FC = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({ email: "", password: "" });
-    const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError("");
         setLoading(true);
 
         try {
@@ -27,21 +26,22 @@ const EmployeeLogin: React.FC = () => {
 
             // Success - redirect based on role
             if (response.data.role === "EMPLOYEE") {
+                toast.success("Login successful! Welcome back.");
                 navigate("/employee-dashboard");
             } else if (response.data.role === "ADMIN") {
-                setError("Please use the Admin login portal");
+                toast.error("Please use the Admin login portal");
             } else {
-                setError("Access denied: Invalid role");
+                toast.error("Access denied: Invalid role");
             }
         } catch (err: any) {
             console.error("Login Error:", err);
             // Axios puts server response in err.response.data
             if (err.response?.data?.message) {
-                setError(err.response.data.message);
+                toast.error(err.response.data.message);
             } else if (err.response) {
-                setError("Login failed. Please try again.");
+                toast.error("Login failed. Please try again.");
             } else {
-                setError("Server connection error. Please try again.");
+                toast.error("Server connection error. Please try again.");
             }
         } finally {
             setLoading(false);
@@ -67,12 +67,6 @@ const EmployeeLogin: React.FC = () => {
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6">
-                    {error && (
-                        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-                            {error}
-                        </div>
-                    )}
-
                     <div className="space-y-2">
                         <label className="block text-slate-400 text-[11px] uppercase tracking-wider ml-1">Staff Email</label>
                         <input
@@ -97,7 +91,7 @@ const EmployeeLogin: React.FC = () => {
                         />
                     </div>
 
-                    <button 
+                    <button
                         type="submit"
                         disabled={loading}
                         className="w-full py-5 mt-4 bg-gradient-to-r from-[var(--apl-green)] to-[#4eb192] text-white font-bold text-sm uppercase tracking-widest rounded-2xl shadow-xl shadow-emerald-500/10 hover:shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
