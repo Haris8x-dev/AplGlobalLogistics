@@ -4,9 +4,10 @@ import { Package, ArrowRightLeft, List, Activity, LogOut } from "lucide-react";
 interface SidePanelProps {
     activeSection: string;
     setActiveSection: (section: string) => void;
+    onLogoutClick: () => void;
 }
 
-const SidePanel: React.FC<SidePanelProps> = ({ activeSection, setActiveSection }) => {
+const SidePanel: React.FC<SidePanelProps> = ({ activeSection, setActiveSection, onLogoutClick }) => {
     const menuItems = [
         { id: "addStock", label: "Add Stock", icon: Package },
         { id: "transferStock", label: "Transfer Stock", icon: ArrowRightLeft },
@@ -52,7 +53,10 @@ const SidePanel: React.FC<SidePanelProps> = ({ activeSection, setActiveSection }
 
             {/* Footer */}
             <div className="p-4 border-t border-white/5">
-                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-left">
+                <button
+                    onClick={onLogoutClick}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-left"
+                >
                     <LogOut size={20} />
                     <span className="font-medium text-sm">Logout</span>
                 </button>

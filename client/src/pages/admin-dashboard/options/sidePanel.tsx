@@ -1,19 +1,21 @@
 import React from "react";
-import { LayoutDashboard, Users, Package, Smartphone, FolderTree, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Package, Smartphone, FolderTree, Settings, FileText, LogOut } from "lucide-react";
 
 interface SidePanelProps {
     activeSection: string;
     setActiveSection: (section: string) => void;
+    onLogoutClick: () => void;
 }
 
-const SidePanel: React.FC<SidePanelProps> = ({ activeSection, setActiveSection }) => {
+const SidePanel: React.FC<SidePanelProps> = ({ activeSection, setActiveSection, onLogoutClick }) => {
     const menuItems = [
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
         { id: "manageClients", label: "Manage Clients", icon: Users },
         { id: "manageCat", label: "Manage Categories", icon: FolderTree },
         { id: "manageModels", label: "Manage Models", icon: Smartphone },
         { id: "manageUsers", label: "Manage Users", icon: Package },
-        { id: "report", label: "Report", icon: LogOut },
+        { id: "report", label: "Report", icon: FileText },
+        { id: "settings", label: "Settings", icon: Settings },
     ];
 
     return (
@@ -54,7 +56,10 @@ const SidePanel: React.FC<SidePanelProps> = ({ activeSection, setActiveSection }
 
             {/* Footer */}
             <div className="p-4 border-t border-white/5">
-                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-left">
+                <button
+                    onClick={onLogoutClick}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all text-left"
+                >
                     <LogOut size={20} />
                     <span className="font-medium text-sm">Logout</span>
                 </button>

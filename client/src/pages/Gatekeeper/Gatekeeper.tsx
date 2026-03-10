@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 interface GatekeeperProps {
     onUnlock: () => void;
@@ -7,17 +9,45 @@ interface GatekeeperProps {
 const Gatekeeper: React.FC<GatekeeperProps> = ({ onUnlock }) => {
     const [password, setPassword] = useState("");
     const [error, setError] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    const handleUnlock = (e: React.FormEvent) => {
+    const handleUnlock = async (e: React.FormEvent) => {
         e.preventDefault();
-        const APP_PASSWORD = "123"; // Later linked to .env via Backend
 
-        if (password === APP_PASSWORD) {
-            sessionStorage.setItem("apl_app_authorized", "true");
-            onUnlock();
-        } else {
+        if (!password.trim()) {
+            setError(true);
+            return;
+        }
+
+        setLoading(true);
+        setError(false);
+
+        try {
+            const response = await axios.post(
+                "http://localhost:5000/api/config/validate-password",
+                { password },
+                { withCredentials: true }
+            );
+
+            if (response.data.success && response.data.isValid) {
+                sessionStorage.setItem("apl_app_authorized", "true");
+                toast.success("Access granted");
+                onUnlock();
+            }
+        } catch (error: any) {
+            console.error("Password validation error:", error);
             setError(true);
             setPassword("");
+
+            if (error.response?.status === 404) {
+                toast.error("System password not configured. Please contact administrator.");
+            } else if (error.response?.status === 401) {
+                toast.error("Invalid access key");
+            } else {
+                toast.error(error.response?.data?.message || "Failed to validate password");
+            }
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -71,9 +101,20 @@ const Gatekeeper: React.FC<GatekeeperProps> = ({ onUnlock }) => {
 
                     <button
                         type="submit"
-                        className="w-full py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-[var(--apl-cyan)] to-[var(--apl-green)] hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-cyan-500/20"
+                        disabled={loading}
+                        className="w-full py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-[var(--apl-cyan)] to-[var(--apl-green)] hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Unlock System
+                        {loading ? (
+                            <span className="flex items-center justify-center gap-2">
+                                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Verifying...
+                            </span>
+                        ) : (
+                            "Unlock System"
+                        )}
                     </button>
                 </form>
 

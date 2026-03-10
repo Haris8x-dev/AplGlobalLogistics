@@ -7,13 +7,14 @@ import cookieParser from 'cookie-parser';
 // Pointing to the new organized routes folder
 import authRoutes from './routes/auth/authRoutes.js';
 import clientRoutes from './routes/admin/clientRoutes.js';
-import inventoryRoutes from './routes/admin/inventoryRoutes.js'; 
+import inventoryRoutes from './routes/admin/inventoryRoutes.js';
 import stockRoutes from './routes/stock/stockRoutes.js';
+import configRoutes from './routes/config/configRoutes.js';
 
 // 🔧 CORS Configuration
 const corsOptions = {
   // Replace with your actual frontend URL (e.g., http://localhost:5173 for Vite)
-  origin: ["http://localhost:5173"], 
+  origin: ["http://localhost:5173"],
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "x-app-session"],
   credentials: true, // Crucial if you use Cookies for Auth
@@ -34,6 +35,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin/clients', clientRoutes);
 app.use('/api/admin/inventory', inventoryRoutes);
 app.use('/api/stock', stockRoutes);
+app.use('/api/config', configRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'APL Core Server is Healthy' });
