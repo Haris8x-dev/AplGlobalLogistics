@@ -40,6 +40,7 @@ const TransferStock = () => {
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
 
     // Transfer Form State
     const [categories, setCategories] = useState<Category[]>([]);
@@ -289,14 +290,16 @@ const TransferStock = () => {
                                 {clients.map((client) => (
                                     <div
                                         key={client.id}
-                                        onClick={() => handleClientSelect(client)}
-                                        className={`bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-xl p-6 transition-all cursor-pointer ${client.stockSummary.length === 0
-                                                ? "opacity-50 cursor-not-allowed"
-                                                : "hover:border-[var(--apl-cyan)]/50 hover:shadow-lg hover:shadow-[var(--apl-cyan)]/10"
+                                        className={`bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-xl p-6 transition-all ${client.stockSummary.length === 0
+                                            ? "opacity-50"
+                                            : "hover:border-[var(--apl-cyan)]/50 hover:shadow-lg hover:shadow-[var(--apl-cyan)]/10"
                                             }`}
                                     >
                                         {/* Client Info */}
-                                        <div className="mb-4 pb-4 border-b border-white/5">
+                                        <div
+                                            className="mb-4 pb-4 border-b border-white/5 cursor-pointer"
+                                            onClick={() => client.stockSummary.length > 0 && handleClientSelect(client)}
+                                        >
                                             <h3 className="text-lg font-semibold text-white mb-1">
                                                 {client.companyName}
                                             </h3>
@@ -304,28 +307,43 @@ const TransferStock = () => {
                                             <p className="text-slate-500 text-xs">{client.address}</p>
                                         </div>
 
-                                        {/* Stock Summary */}
+                                        {/* Stock Summary Dropdown */}
                                         <div>
-                                            <p className="text-slate-400 text-xs uppercase tracking-wider mb-3">
-                                                Stock Inventory
-                                            </p>
-                                            {client.stockSummary.length === 0 ? (
-                                                <p className="text-slate-500 text-sm italic">No stock available</p>
-                                            ) : (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setExpandedClientId(expandedClientId === client.id ? null : client.id);
+                                                }}
+                                                className="w-full flex items-center justify-between text-slate-400 text-xs uppercase tracking-wider mb-3 hover:text-[var(--apl-cyan)] transition-colors"
+                                            >
+                                                <span>Stock Inventory ({client.stockSummary.length})</span>
+                                                <ChevronDown
+                                                    size={16}
+                                                    className={`transition-transform ${expandedClientId === client.id ? "rotate-180" : ""
+                                                        }`}
+                                                />
+                                            </button>
+
+                                            {/* Collapsible Stock List */}
+                                            {expandedClientId === client.id && (
                                                 <div className="space-y-2 max-h-32 overflow-y-auto">
-                                                    {client.stockSummary.map((stock, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            className="flex items-center justify-between text-sm bg-slate-900/50 rounded-lg px-3 py-2"
-                                                        >
-                                                            <span className="text-slate-300 truncate flex-1">
-                                                                {stock.modelName}
-                                                            </span>
-                                                            <span className="text-[var(--apl-cyan)] font-semibold ml-2">
-                                                                {stock.quantity}
-                                                            </span>
-                                                        </div>
-                                                    ))}
+                                                    {client.stockSummary.length === 0 ? (
+                                                        <p className="text-slate-500 text-sm italic">No stock available</p>
+                                                    ) : (
+                                                        client.stockSummary.map((stock, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className="flex items-center justify-between text-sm bg-slate-900/50 rounded-lg px-3 py-2"
+                                                            >
+                                                                <span className="text-slate-300 truncate flex-1">
+                                                                    {stock.modelName}
+                                                                </span>
+                                                                <span className="text-[var(--apl-cyan)] font-semibold ml-2">
+                                                                    {stock.quantity}
+                                                                </span>
+                                                            </div>
+                                                        ))
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
