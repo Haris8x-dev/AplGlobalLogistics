@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import axiosInstance from "../../../utils/axiosConfig";
 import { Plus, Power, X, Save, Smartphone, Search, FileSpreadsheet, Edit2, Check, FolderTree } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
@@ -45,9 +45,7 @@ const ManageModels: React.FC = () => {
     const fetchModels = async () => {
         try {
             setLoading(true);
-            const response = await axios.get("http://localhost:5000/api/admin/inventory/models", {
-                withCredentials: true
-            });
+            const response = await axiosInstance.get("/api/admin/inventory/models");
             setModels(response.data.models);
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Failed to fetch models");
@@ -59,9 +57,7 @@ const ManageModels: React.FC = () => {
     // Fetch active categories for add form dropdown
     const fetchCategories = async () => {
         try {
-            const response = await axios.get("http://localhost:5000/api/admin/inventory/active-inventory", {
-                withCredentials: true
-            });
+            const response = await axiosInstance.get("/api/admin/inventory/active-inventory");
             setCategories(response.data.inventory);
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Failed to fetch categories");
@@ -84,10 +80,9 @@ const ManageModels: React.FC = () => {
     const handleAddModel = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await axios.post(
-                "http://localhost:5000/api/admin/inventory/model",
-                { name: modelName, categoryId: selectedCategoryId },
-                { withCredentials: true }
+            await axiosInstance.post(
+                "/api/admin/inventory/model",
+                { name: modelName, categoryId: selectedCategoryId }
             );
             toast.success("Model added successfully!");
             resetForm();
@@ -100,10 +95,9 @@ const ManageModels: React.FC = () => {
     // Toggle model status
     const handleToggleStatus = async (id: string) => {
         try {
-            await axios.patch(
-                `http://localhost:5000/api/admin/inventory/model/status/${id}`,
-                {},
-                { withCredentials: true }
+            await axiosInstance.patch(
+                `/api/admin/inventory/model/status/${id}`,
+                {}
             );
             toast.success("Model status updated!");
             await fetchModels();
@@ -127,13 +121,12 @@ const ManageModels: React.FC = () => {
         }
 
         try {
-            await axios.patch(
-                `http://localhost:5000/api/admin/inventory/model/${modelId}`,
+            await axiosInstance.patch(
+                `/api/admin/inventory/model/${modelId}`,
                 {
                     name: editingModelName,
                     categoryId: editingCategoryId
-                },
-                { withCredentials: true }
+                }
             );
             toast.success("Model updated successfully!");
             setEditingModelId(null);

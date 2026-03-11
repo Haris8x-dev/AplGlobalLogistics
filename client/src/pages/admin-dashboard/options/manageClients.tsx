@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import axiosInstance from "../../../utils/axiosConfig";
 import { Plus, Edit, Power, X, Save, Building2, User, Mail, Phone, MapPin, Briefcase, Search, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
@@ -49,9 +49,7 @@ const ManageClients: React.FC = () => {
     const fetchClients = async () => {
         try {
             setLoading(true);
-            const response = await axios.get("http://localhost:5000/api/admin/clients/all", {
-                withCredentials: true
-            });
+            const response = await axiosInstance.get("/api/admin/clients/all");
             setClients(response.data.clients);
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Failed to fetch clients");
@@ -82,9 +80,7 @@ const ManageClients: React.FC = () => {
     const handleAddClient = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await axios.post("http://localhost:5000/api/admin/clients/add", formData, {
-                withCredentials: true
-            });
+            await axiosInstance.post("/api/admin/clients/add", formData);
             toast.success("Client added successfully!");
             resetForm();
             fetchClients();
@@ -99,10 +95,9 @@ const ManageClients: React.FC = () => {
         if (!editingClient) return;
 
         try {
-            await axios.patch(
-                `http://localhost:5000/api/admin/clients/update/${editingClient.id}`,
-                formData,
-                { withCredentials: true }
+            await axiosInstance.patch(
+                `/api/admin/clients/update/${editingClient.id}`,
+                formData
             );
             toast.success("Client updated successfully!");
             resetForm();
@@ -115,10 +110,9 @@ const ManageClients: React.FC = () => {
     // Toggle client status
     const handleToggleStatus = async (id: string) => {
         try {
-            await axios.patch(
-                `http://localhost:5000/api/admin/clients/status/${id}`,
-                {},
-                { withCredentials: true }
+            await axiosInstance.patch(
+                `/api/admin/clients/status/${id}`,
+                {}
             );
             toast.success("Client status updated!");
             fetchClients();

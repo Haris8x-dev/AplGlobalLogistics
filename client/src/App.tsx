@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Gatekeeper from "./pages/Gatekeeper/Gatekeeper";
@@ -20,55 +20,51 @@ function App() {
     }
   }, []);
 
-  const router = createBrowserRouter([
-    {
-      path: "/",
-      // Once the Gatekeeper is passed, we always send them to role selection
-      element: <Navigate to="/login" replace />,
-    },
-    {
-      path: "/login",
-      element: <IdentitySelection />,
-    },
-    {
-      path: "/admin-login",
-      element: <AdminLogin />,
-    },
-    {
-      path: "/employee-login",
-      element: <EmployeeLogin />,
-    },
-    {
-      path: "/admin-dashboard",
-      element: <AdminDashboard />,
-    },
-    {
-      path: "/employee-dashboard",
-      element: <EmployeeDashboard />,
-    },
-    // Fallback: if user tries to access a non-existent route, send to /login
-    {
-      path: "*",
-      element: <Navigate to="/login" replace />,
-    },
-  ]);
-
-  // LEVEL 1 SECURITY: The System Gatekeeper
+  // If not authorized, show Gatekeeper
   if (!isAuthorized) {
     return (
       <>
         <Gatekeeper onUnlock={() => setIsAuthorized(true)} />
-        <ToastContainer position="top-right" autoClose={3000} theme="dark" />
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+        />
       </>
     );
   }
 
-  // LEVEL 2: The Router (Selection -> Login -> Dashboard)
   return (
-    <>
-      <RouterProvider router={router} />
-      <ToastContainer position="top-right" autoClose={3000} theme="dark" />
-    </>
+    <HashRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<IdentitySelection />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/employee-login" element={<EmployeeLogin />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
+    </HashRouter>
   );
 }
 

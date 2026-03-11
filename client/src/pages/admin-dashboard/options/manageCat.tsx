@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import axiosInstance from "../../../utils/axiosConfig";
 import { Plus, Power, X, Save, FolderTree, Search, FileSpreadsheet, ChevronDown, ChevronUp, Edit2, Check } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
@@ -46,9 +46,7 @@ const ManageCat: React.FC = () => {
     const fetchCategories = async () => {
         try {
             setLoading(true);
-            const response = await axios.get("http://localhost:5000/api/admin/inventory/admin-inventory", {
-                withCredentials: true
-            });
+            const response = await axiosInstance.get("/api/admin/inventory/admin-inventory");
             setCategories(response.data.inventory);
         } catch (err: any) {
             toast.error(err.response?.data?.message || "Failed to fetch categories");
@@ -71,10 +69,9 @@ const ManageCat: React.FC = () => {
     const handleAddCategory = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await axios.post(
-                "http://localhost:5000/api/admin/inventory/category",
-                { name: categoryName },
-                { withCredentials: true }
+            await axiosInstance.post(
+                "/api/admin/inventory/category",
+                { name: categoryName }
             );
             toast.success("Category added successfully!");
             resetForm();
@@ -87,10 +84,9 @@ const ManageCat: React.FC = () => {
     // Toggle category status
     const handleToggleStatus = async (id: string) => {
         try {
-            await axios.patch(
-                `http://localhost:5000/api/admin/inventory/category/status/${id}`,
-                {},
-                { withCredentials: true }
+            await axiosInstance.patch(
+                `/api/admin/inventory/category/status/${id}`,
+                {}
             );
             toast.success("Category status updated!");
             await fetchCategories();
@@ -114,9 +110,8 @@ const ManageCat: React.FC = () => {
             if (!categoryModels[categoryId]) {
                 setLoadingModels(new Set(loadingModels).add(categoryId));
                 try {
-                    const response = await axios.get(
-                        `http://localhost:5000/api/admin/inventory/category/${categoryId}/models`,
-                        { withCredentials: true }
+                    const response = await axiosInstance.get(
+                        `/api/admin/inventory/category/${categoryId}/models`
                     );
                     setCategoryModels({
                         ...categoryModels,
@@ -147,10 +142,9 @@ const ManageCat: React.FC = () => {
         }
 
         try {
-            await axios.patch(
-                `http://localhost:5000/api/admin/inventory/category/${categoryId}`,
-                { name: editingCategoryName },
-                { withCredentials: true }
+            await axiosInstance.patch(
+                `/api/admin/inventory/category/${categoryId}`,
+                { name: editingCategoryName }
             );
             toast.success("Category name updated!");
             setEditingCategoryId(null);
@@ -315,18 +309,18 @@ const ManageCat: React.FC = () => {
             </div>
 
             {/* Search Filter */}
-                <div className="mb-6">
-                    <div className="relative max-w-md">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                        <input
-                            type="text"
-                            placeholder="Search categories by name..."
-                            value={searchName}
-                            onChange={(e) => setSearchName(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-800/30 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] focus:ring-1 focus:ring-[var(--apl-cyan)]/20 outline-none transition-all placeholder:text-slate-500"
-                        />
-                    </div>
+            <div className="mb-6">
+                <div className="relative max-w-md">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                    <input
+                        type="text"
+                        placeholder="Search categories by name..."
+                        value={searchName}
+                        onChange={(e) => setSearchName(e.target.value)}
+                        className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-800/30 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] focus:ring-1 focus:ring-[var(--apl-cyan)]/20 outline-none transition-all placeholder:text-slate-500"
+                    />
                 </div>
+            </div>
 
             {/* Action Buttons */}
             {!showAddForm && (

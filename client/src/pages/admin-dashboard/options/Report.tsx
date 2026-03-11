@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-import { ArrowLeft, Search, Download, Package, TrendingUp, TrendingDown, FileSpreadsheet, Eye } from "lucide-react";
+import axiosInstance from "../../../utils/axiosConfig";
+import { ArrowLeft, Search, Download, Package, TrendingUp, TrendingDown, FileSpreadsheet, Eye, RefreshCw } from "lucide-react";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 
@@ -54,26 +54,28 @@ const Report = () => {
     const [searchClients, setSearchClients] = useState("");
     const [searchModels, setSearchModels] = useState("");
     const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
         fetchClients();
     }, []);
 
-    const fetchClients = async () => {
+    const fetchClients = async (isRefresh = false) => {
         try {
-            setLoading(true);
-            const response = await axios.get("http://localhost:5000/api/admin/clients/all", {
-                withCredentials: true,
-            });
+            if (isRefresh) {
+                setRefreshing(true);
+            } else {
+                setLoading(true);
+            }
+            const response = await axiosInstance.get("/api/admin/clients/all");
             const clientsData = response.data.clients || [];
 
             // Fetch stock count for each client
             const clientsWithStock = await Promise.all(
                 clientsData.map(async (client: Client) => {
                     try {
-                        const stockRes = await axios.get(
-                            `http://localhost:5000/api/stock/client-inventory/${client.id}`,
-                            { withCredentials: true }
+                        const stockRes = await axiosInstance.get(
+                            `/api/stock/client-inventory/${client.id}`
                         );
                         return {
                             ...client,
@@ -90,16 +92,18 @@ const Report = () => {
             toast.error("Failed to fetch clients");
             console.error(error);
         } finally {
-            setLoading(false);
+            if (isRefresh) {
+                setRefreshing(false);
+            } else {
+                setLoading(false);
+            }
         }
     };
 
     const fetchClientStocks = async (clientId: string) => {
         try {
             setLoading(true);
-            const response = await axios.get(`http://localhost:5000/api/stock/client-inventory/${clientId}`, {
-                withCredentials: true,
-            });
+            const response = await axiosInstance.get(`/api/stock/client-inventory/${clientId}`);
             setClientStocks(response.data.inventory || []);
         } catch (error) {
             toast.error("Failed to fetch client inventory");
@@ -112,9 +116,8 @@ const Report = () => {
     const fetchHistory = async (clientId: string, modelId: string) => {
         try {
             setLoading(true);
-            const response = await axios.get(
-                `http://localhost:5000/api/stock/history/${clientId}/${modelId}`,
-                { withCredentials: true }
+            const response = await axiosInstance.get(
+                `/api/stock/history/${clientId}/${modelId}`
             );
             setHistory(response.data.data || []);
         } catch (error) {
@@ -211,12 +214,40 @@ const Report = () => {
     // View 1: Clients Table
     if (!selectedClient) {
         return (
-            <div className="p-6 min-h-screen">
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-white mb-1">
-                        Client <span className="text-(--apl-cyan)">Reports</span>
-                    </h1>
-                    <p className="text-slate-400 text-sm">Select a client to view detailed inventory reports</p>
+            <div className="p-6 min-h-screen relative">
+                {/* Beautiful Loading Overlay */}
+                {refreshing && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+                        <div className="bg-slate-800/90 border border-white/10 rounded-2xl p-8 shadow-2xl">
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="relative">
+                                    <div className="w-16 h-16 border-4 border-slate-700 rounded-full"></div>
+                                    <div className="w-16 h-16 border-4 border-(--apl-cyan) border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+                                </div>
+                                <div className="text-center">
+                                    <h3 className="text-white font-semibold text-lg mb-1">Refreshing Reports</h3>
+                                    <p className="text-slate-400 text-sm">Fetching latest data...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div className="mb-6 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-1">
+                            Client <span className="text-(--apl-cyan)">Reports</span>
+                        </h1>
+                        <p className="text-slate-400 text-sm">Select a client to view detailed inventory reports</p>
+                    </div>
+                    <button
+                        onClick={() => fetchClients(true)}
+                        disabled={refreshing}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-(--apl-cyan) text-white rounded-xl hover:bg-(--apl-cyan)/80 transition-all disabled:opacity-50 font-medium"
+                    >
+                        <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
+                        {refreshing ? "Refreshing..." : "Refresh"}
+                    </button>
                 </div>
 
                 {/* Search and Export */}
@@ -306,7 +337,25 @@ const Report = () => {
     // View 2: Models List
     if (selectedClient && !selectedModel) {
         return (
-            <div className="p-6 min-h-screen">
+            <div className="p-6 min-h-screen relative">
+                {/* Beautiful Loading Overlay */}
+                {refreshing && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+                        <div className="bg-slate-800/90 border border-white/10 rounded-2xl p-8 shadow-2xl">
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="relative">
+                                    <div className="w-16 h-16 border-4 border-slate-700 rounded-full"></div>
+                                    <div className="w-16 h-16 border-4 border-(--apl-cyan) border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+                                </div>
+                                <div className="text-center">
+                                    <h3 className="text-white font-semibold text-lg mb-1">Refreshing Inventory</h3>
+                                    <p className="text-slate-400 text-sm">Fetching latest data...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <button
                     onClick={handleBack}
                     className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
@@ -315,11 +364,24 @@ const Report = () => {
                     Back to Clients
                 </button>
 
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-white mb-1">
-                        {selectedClient.companyName} <span className="text-(--apl-cyan)">Inventory</span>
-                    </h1>
-                    <p className="text-slate-400 text-sm">Select a model to view transaction history</p>
+                <div className="mb-6 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-1">
+                            {selectedClient.companyName} <span className="text-(--apl-cyan)">Inventory</span>
+                        </h1>
+                        <p className="text-slate-400 text-sm">Select a model to view transaction history</p>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setRefreshing(true);
+                            fetchClientStocks(selectedClient.id).finally(() => setRefreshing(false));
+                        }}
+                        disabled={refreshing}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-(--apl-cyan) text-white rounded-xl hover:bg-(--apl-cyan)/80 transition-all disabled:opacity-50 font-medium"
+                    >
+                        <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
+                        {refreshing ? "Refreshing..." : "Refresh"}
+                    </button>
                 </div>
 
                 <div className="bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-xl p-6">
@@ -374,7 +436,25 @@ const Report = () => {
 
     // View 3: History Details
     return (
-        <div className="p-6 min-h-screen">
+        <div className="p-6 min-h-screen relative">
+            {/* Beautiful Loading Overlay */}
+            {refreshing && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <div className="bg-slate-800/90 border border-white/10 rounded-2xl p-8 shadow-2xl">
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="relative">
+                                <div className="w-16 h-16 border-4 border-slate-700 rounded-full"></div>
+                                <div className="w-16 h-16 border-4 border-(--apl-cyan) border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+                            </div>
+                            <div className="text-center">
+                                <h3 className="text-white font-semibold text-lg mb-1">Refreshing History</h3>
+                                <p className="text-slate-400 text-sm">Fetching latest data...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <button
                 onClick={handleBack}
                 className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
@@ -392,13 +472,28 @@ const Report = () => {
                         {selectedClient?.companyName} - {selectedModel?.model.name}
                     </p>
                 </div>
-                <button
-                    onClick={exportToExcel}
-                    className="flex items-center gap-2 px-4 py-2 bg-(--apl-cyan) text-white rounded-lg hover:bg-(--apl-cyan)/80 transition-all"
-                >
-                    <Download size={18} />
-                    Export Excel
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => {
+                            if (selectedClient && selectedModel) {
+                                setRefreshing(true);
+                                fetchHistory(selectedClient.id, selectedModel.modelId).finally(() => setRefreshing(false));
+                            }
+                        }}
+                        disabled={refreshing}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-(--apl-cyan) text-white rounded-xl hover:bg-(--apl-cyan)/80 transition-all disabled:opacity-50 font-medium"
+                    >
+                        <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
+                        {refreshing ? "Refreshing..." : "Refresh"}
+                    </button>
+                    <button
+                        onClick={exportToExcel}
+                        className="flex items-center gap-2 px-4 py-2 bg-(--apl-cyan) text-white rounded-lg hover:bg-(--apl-cyan)/80 transition-all"
+                    >
+                        <Download size={18} />
+                        Export Excel
+                    </button>
+                </div>
             </div>
 
             <div className="bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-xl p-6">

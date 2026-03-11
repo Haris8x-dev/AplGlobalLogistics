@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import { useState } from "react";
 import SidePanel from "../options/sidePanel";
 import Dashboard from "../options/dashboard";
 import ManageClients from "../options/manageClients";

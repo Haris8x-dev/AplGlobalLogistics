@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import axiosInstance from "../../utils/axiosConfig";
 import { toast } from "react-toastify";
 
 interface GatekeeperProps {
@@ -23,10 +23,9 @@ const Gatekeeper: React.FC<GatekeeperProps> = ({ onUnlock }) => {
         setError(false);
 
         try {
-            const response = await axios.post(
-                "http://localhost:5000/api/config/validate-password",
-                { password },
-                { withCredentials: true }
+            const response = await axiosInstance.post(
+                "/api/config/validate-password",
+                { password }
             );
 
             if (response.data.success && response.data.isValid) {

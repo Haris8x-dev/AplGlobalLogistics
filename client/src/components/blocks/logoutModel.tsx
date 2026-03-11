@@ -1,6 +1,6 @@
 import React from "react";
 import { AlertCircle, X } from "lucide-react";
-import axios from "axios";
+import axiosInstance, { isElectron } from "../../utils/axiosConfig";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
@@ -16,15 +16,16 @@ const LogoutModal: React.FC<LogoutModalProps> = ({ isOpen, onClose }) => {
 
     const handleLogout = async () => {
         try {
-            await axios.post(
-                "http://localhost:5000/api/auth/logout",
-                {},
-                { withCredentials: true }
-            );
+            await axiosInstance.post("/api/auth/logout", {});
 
             // Clear session storage
             sessionStorage.removeItem("apl_user_role");
             sessionStorage.removeItem("apl_is_admin");
+
+            // Clear Electron token if running in Electron
+            if (isElectron()) {
+                localStorage.removeItem("apl_auth_token");
+            }
 
             toast.success("Logged out successfully");
             navigate("/login");

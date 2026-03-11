@@ -1,5 +1,5 @@
 import React from "react";
-import { Package, ArrowRightLeft, List, Activity, LogOut } from "lucide-react";
+import { Package, ArrowRightLeft, LogOut } from "lucide-react";
 
 interface SidePanelProps {
     activeSection: string;

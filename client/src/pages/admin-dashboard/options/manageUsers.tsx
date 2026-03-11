@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import axiosInstance from "../../../utils/axiosConfig";
 import {
     Plus,
     Power,
@@ -73,9 +73,7 @@ const ManageUsers: React.FC = () => {
     const fetchUsers = async () => {
         try {
             setLoading(true);
-            const response = await axios.get("http://localhost:5000/api/auth/getAuth", {
-                withCredentials: true
-            });
+            const response = await axiosInstance.get("/api/auth/getAuth");
 
             const allUsers = [
                 ...response.data.data.admins,
@@ -110,10 +108,9 @@ const ManageUsers: React.FC = () => {
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await axios.post(
-                "http://localhost:5000/api/auth/generate",
-                formData,
-                { withCredentials: true }
+            await axiosInstance.post(
+                "/api/auth/generate",
+                formData
             );
             toast.success("User created successfully!");
             resetForm();
@@ -126,10 +123,9 @@ const ManageUsers: React.FC = () => {
     // Toggle user status
     const handleToggleStatus = async (id: string) => {
         try {
-            await axios.patch(
-                `http://localhost:5000/api/auth/status/${id}`,
-                {},
-                { withCredentials: true }
+            await axiosInstance.patch(
+                `/api/auth/status/${id}`,
+                {}
             );
             toast.success("User status updated!");
             await fetchUsers();
@@ -163,10 +159,9 @@ const ManageUsers: React.FC = () => {
                 updatePayload.password = editFormData.password;
             }
 
-            await axios.patch(
-                `http://localhost:5000/api/auth/update/${userId}`,
-                updatePayload,
-                { withCredentials: true }
+            await axiosInstance.patch(
+                `/api/auth/update/${userId}`,
+                updatePayload
             );
             toast.success("User updated successfully!");
             setEditingUserId(null);
@@ -213,10 +208,9 @@ const ManageUsers: React.FC = () => {
                 payload.secretCode = roleSecretCode;
             }
 
-            await axios.patch(
-                `http://localhost:5000/api/auth/update-role/${changingRoleUserId}`,
-                payload,
-                { withCredentials: true }
+            await axiosInstance.patch(
+                `/api/auth/update-role/${changingRoleUserId}`,
+                payload
             );
             toast.success("User role updated successfully!");
             setChangingRoleUserId(null);

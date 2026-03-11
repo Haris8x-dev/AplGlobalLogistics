@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import SidePanel from "../options/sidePanel";
 import AddStock from "../options/addStock";
 import TransferStock from "../options/transferStock";

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axiosInstance from "../../utils/axiosConfig"; // Use configured axios
 import { toast } from "react-toastify";
 
 const EmployeeLogin: React.FC = () => {
@@ -13,15 +13,9 @@ const EmployeeLogin: React.FC = () => {
         setLoading(true);
 
         try {
-            const response = await axios.post(
-                "http://localhost:5000/api/auth/login/employee",
-                formData,
-                {
-                    withCredentials: true, // Important for cookies
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                }
+            const response = await axiosInstance.post(
+                "/api/auth/login/employee",
+                formData
             );
 
             // Success - redirect based on role

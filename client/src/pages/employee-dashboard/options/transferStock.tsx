@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ArrowRightLeft, Send, ArrowLeft, Package, ChevronDown, X } from "lucide-react";
-import axios from "axios";
+import { Send, ArrowLeft, Package, ChevronDown, X } from "lucide-react";
+import axiosInstance from "../../../utils/axiosConfig";
 import { toast } from "react-toastify";
 
 interface StockItem {
@@ -126,9 +126,7 @@ const TransferStock = () => {
     const fetchClientsWithStock = async () => {
         try {
             setLoading(true);
-            const response = await axios.get("http://localhost:5000/api/stock/clients-with-stock", {
-                withCredentials: true,
-            });
+            const response = await axiosInstance.get("/api/stock/clients-with-stock");
             setClients(response.data.clients || []);
         } catch (error: any) {
             toast.error("Failed to fetch clients");
@@ -227,8 +225,8 @@ const TransferStock = () => {
 
         try {
             setSubmitting(true);
-            const response = await axios.post(
-                "http://localhost:5000/api/stock/transfer",
+            const response = await axiosInstance.post(
+                "/api/stock/transfer",
                 {
                     fromClientId: formData.fromClientId,
                     toClientId: formData.toClientId,
@@ -236,8 +234,7 @@ const TransferStock = () => {
                     quantity: quantity,
                     transferType: "TransferOut",
                     message: formData.message || undefined,
-                },
-                { withCredentials: true }
+                }
             );
 
             if (response.data.success) {

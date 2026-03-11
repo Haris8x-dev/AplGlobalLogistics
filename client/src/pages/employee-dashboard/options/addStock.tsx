@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, ChevronDown, X } from "lucide-react";
-import axios from "axios";
+import axiosInstance from "../../../utils/axiosConfig";
 import { toast } from "react-toastify";
 
 interface Client {
@@ -84,9 +84,7 @@ const AddStock = () => {
     const fetchClients = async () => {
         try {
             setLoading(true);
-            const response = await axios.get("http://localhost:5000/api/admin/clients/all", {
-                withCredentials: true,
-            });
+            const response = await axiosInstance.get("/api/admin/clients/all");
             const allClients = response.data.clients || [];
             // Filter only active clients
             const activeClients = allClients.filter((client: Client) => client.isActive === true);
@@ -102,9 +100,7 @@ const AddStock = () => {
     const fetchCategories = async () => {
         try {
             setLoading(true);
-            const response = await axios.get("http://localhost:5000/api/admin/inventory/active-inventory", {
-                withCredentials: true,
-            });
+            const response = await axiosInstance.get("/api/admin/inventory/active-inventory");
             setCategories(response.data.inventory || []);
         } catch (error) {
             toast.error("Failed to fetch categories");
@@ -151,16 +147,15 @@ const AddStock = () => {
 
         try {
             setSubmitting(true);
-            const response = await axios.post(
-                "http://localhost:5000/api/stock/add-initial",
+            const response = await axiosInstance.post(
+                "/api/stock/add-initial",
                 {
                     clientId: formData.clientId,
                     modelId: formData.modelId,
                     quantity: parseInt(formData.quantity),
                     transferType: formData.transferType,
                     message: formData.message || undefined,
-                },
-                { withCredentials: true }
+                }
             );
 
             if (response.data.success) {

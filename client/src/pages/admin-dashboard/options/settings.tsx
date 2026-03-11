@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosInstance from '../../../utils/axiosConfig';
 import { toast } from 'react-toastify';
 import { Lock, Key, Shield, Eye, EyeOff } from 'lucide-react';
 
@@ -30,11 +30,11 @@ const Settings = () => {
     const checkPasswordExists = async () => {
         try {
             // Try to update with empty data to check if password exists
-            const response = await axios.put(
-                'http://localhost:5000/api/config/update-password',
-                { currentPassword: '', newPassword: '' },
-                { withCredentials: true }
-            );
+            // const response = await axios.put(
+            //     'http://localhost:5000/api/config/update-password',
+            //     { currentPassword: '', newPassword: '' },
+            //     { withCredentials: true }
+            // );
             setPasswordExists(true);
         } catch (error: any) {
             // If 404, password doesn't exist
@@ -69,10 +69,9 @@ const Settings = () => {
         setLoading(true);
 
         try {
-            const response = await axios.post(
-                'http://localhost:5000/api/config/create-password',
-                { password: createForm.password },
-                { withCredentials: true }
+            const response = await axiosInstance.post(
+                '/api/config/create-password',
+                { password: createForm.password }
             );
 
             if (response.data.success) {
@@ -110,13 +109,12 @@ const Settings = () => {
         setLoading(true);
 
         try {
-            const response = await axios.put(
-                'http://localhost:5000/api/config/update-password',
+            const response = await axiosInstance.put(
+                '/api/config/update-password',
                 {
                     currentPassword: updateForm.currentPassword,
                     newPassword: updateForm.newPassword
-                },
-                { withCredentials: true }
+                }
             );
 
             if (response.data.success) {

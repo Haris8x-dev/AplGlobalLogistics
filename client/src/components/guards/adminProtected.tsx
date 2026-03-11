@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import axios from "axios";
+import axiosInstance from "../../utils/axiosConfig";
 
 interface AdminProtectedProps {
     children: React.ReactNode;
@@ -15,9 +15,7 @@ const AdminProtected = ({ children }: AdminProtectedProps) => {
             try {
                 console.log("🔍 AdminProtected: Calling verify-admin API...");
 
-                const response = await axios.get("http://localhost:5000/api/auth/verify-admin", {
-                    withCredentials: true,
-                });
+                const response = await axiosInstance.get("/api/auth/verify-admin");
 
                 console.log("✅ AdminProtected: API Response:", response.data);
 

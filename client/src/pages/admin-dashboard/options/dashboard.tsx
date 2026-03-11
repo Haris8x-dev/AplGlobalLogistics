@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import axiosInstance from "../../../utils/axiosConfig";
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, PieChart, Pie, Cell
@@ -39,19 +39,23 @@ const Dashboard = () => {
     const [totalUsers, setTotalUsers] = useState(0);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
 
     useEffect(() => {
         fetchDashboardData();
     }, []);
 
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (isRefresh = false) => {
         try {
-            setLoading(true);
+            if (isRefresh) {
+                setDashboardRefreshing(true);
+            } else {
+                setLoading(true);
+            }
 
             // Fetch recent movements
-            const movementsRes = await axios.get(
-                "http://localhost:5000/api/stock/recent-activity?limit=50",
-                { withCredentials: true }
+            const movementsRes = await axiosInstance.get(
+                "/api/stock/recent-activity?limit=50"
             );
             const movements = movementsRes.data.data || [];
             setRecentMovements(movements);
@@ -64,7 +68,6 @@ const Dashboard = () => {
             const currentYear = today.getFullYear();
 
             // Initialize from day 1 of current month to last day of month
-            const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
             const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
             for (let i = 0; i < daysInCurrentMonth; i++) {
@@ -94,17 +97,15 @@ const Dashboard = () => {
             setInventoryTrend(trendData);
 
             // Fetch all categories
-            const categoriesRes = await axios.get(
-                "http://localhost:5000/api/admin/inventory/admin-inventory",
-                { withCredentials: true }
+            const categoriesRes = await axiosInstance.get(
+                "/api/admin/inventory/admin-inventory"
             );
             const categories = categoriesRes.data.inventory || [];
             setTotalCategories(categories.length);
 
             // Fetch all models
-            const modelsRes = await axios.get(
-                "http://localhost:5000/api/admin/inventory/models",
-                { withCredentials: true }
+            const modelsRes = await axiosInstance.get(
+                "/api/admin/inventory/models"
             );
             const models = modelsRes.data.models || [];
             setTotalModels(models.length);
@@ -115,25 +116,27 @@ const Dashboard = () => {
             setTotalClients(uniqueClients.size);
 
             // Fetch total users
-            const usersRes = await axios.get(
-                "http://localhost:5000/api/auth/getAuth",
-                { withCredentials: true }
+            const usersRes = await axiosInstance.get(
+                "/api/auth/getAuth"
             );
             setTotalUsers(usersRes.data.totalUsers || 0);
 
         } catch (error) {
             console.error("Error fetching dashboard data:", error);
         } finally {
-            setLoading(false);
+            if (isRefresh) {
+                setDashboardRefreshing(false);
+            } else {
+                setLoading(false);
+            }
         }
     };
 
     const handleRefreshMovements = async () => {
         try {
             setRefreshing(true);
-            const movementsRes = await axios.get(
-                "http://localhost:5000/api/stock/recent-activity?limit=50",
-                { withCredentials: true }
+            const movementsRes = await axiosInstance.get(
+                "/api/stock/recent-activity?limit=50"
             );
             setRecentMovements(movementsRes.data.data || []);
         } catch (error) {
@@ -169,16 +172,42 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="p-6 min-h-screen">
-            {/* Header */}
-            <div className="mb-6">
-                <h1 className="text-3xl font-bold text-white mb-1">
-                    Dashboard <span className="text-(--apl-cyan)">Overview</span>
-                </h1>
-                <p className="text-slate-400 text-sm">Real-time insights into your inventory system</p>
-            </div>
+        <div className="p-6 min-h-screen relative">
+            {/* Beautiful Loading Overlay */}
+            {dashboardRefreshing && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <div className="bg-slate-800/90 border border-white/10 rounded-2xl p-8 shadow-2xl">
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="relative">
+                                <div className="w-16 h-16 border-4 border-slate-700 rounded-full"></div>
+                                <div className="w-16 h-16 border-4 border-(--apl-cyan) border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+                            </div>
+                            <div className="text-center">
+                                <h3 className="text-white font-semibold text-lg mb-1">Refreshing Dashboard</h3>
+                                <p className="text-slate-400 text-sm">Fetching latest data...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-            {/* Stats Cards */}
+            {/* Header */}
+            <div className="mb-6 flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-white mb-1">
+                        Dashboard <span className="text-(--apl-cyan)">Overview</span>
+                    </h1>
+                    <p className="text-slate-400 text-sm">Real-time insights into your inventory system</p>
+                </div>
+                <button
+                    onClick={() => fetchDashboardData(true)}
+                    disabled={dashboardRefreshing}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-(--apl-cyan) text-white rounded-xl hover:bg-(--apl-cyan)/80 transition-all disabled:opacity-50 font-medium"
+                >
+                    <RefreshCw size={18} className={dashboardRefreshing ? "animate-spin" : ""} />
+                    {dashboardRefreshing ? "Refreshing..." : "Refresh Dashboard"}
+                </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                 <div className="bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-xl p-4">
                     <div className="flex items-center justify-between mb-2">
@@ -354,7 +383,7 @@ const Dashboard = () => {
                     </table>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 
