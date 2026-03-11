@@ -49,15 +49,18 @@
     "files": [
       "dist/**/*",
       "electron.js",
+      "preload.js",
+      "public/icon.ico",
       "package.json"
     ],
     "directories": {
-      "buildResources": "assets"
+      "buildResources": "public"
     },
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "icon": "public/icon.ico"
     },
     "nsis": {
       "oneClick": false,

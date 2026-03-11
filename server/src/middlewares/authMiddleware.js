@@ -3,8 +3,16 @@ import prisma from '../config/db.js';
 
 // Check isAdmin middleware to protect admin routes
 export const isAdmin = (req, res, next) => {
-    // Look for the token in the cookies
-    const token = req.cookies.token;
+    // DUAL MODE: Support both cookies (web) and Authorization header (Electron/mobile)
+    let token = req.cookies.token; // Try cookies first (web browsers)
+
+    // If no cookie, check Authorization header (Electron/mobile apps)
+    if (!token && req.headers.authorization) {
+        const authHeader = req.headers.authorization;
+        if (authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7); // Remove 'Bearer ' prefix
+        }
+    }
 
     if (!token) {
         return res.status(401).json({ message: "No token, authorization denied" });
@@ -59,7 +67,16 @@ export const isUserActive = async (req, res, next) => {
 };
 
 export const verifyToken = async (req, res, next) => {
-    const token = req.cookies.token;
+    // DUAL MODE: Support both cookies (web) and Authorization header (Electron/mobile)
+    let token = req.cookies.token; // Try cookies first (web browsers)
+
+    // If no cookie, check Authorization header (Electron/mobile apps)
+    if (!token && req.headers.authorization) {
+        const authHeader = req.headers.authorization;
+        if (authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7); // Remove 'Bearer ' prefix
+        }
+    }
 
     if (!token) {
         return res.status(401).json({ message: "No token, authorization denied" });

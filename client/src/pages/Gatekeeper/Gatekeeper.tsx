@@ -64,7 +64,7 @@ const Gatekeeper: React.FC<GatekeeperProps> = ({ onUnlock }) => {
             <div className="z-10 w-full max-w-md p-8 text-center">
                 {/* Logo Placeholder / Icon */}
                 <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-lg shadow-cyan-500/20">
-                    <img src="/src/assets/apl-core-logo.png" alt="APL Core Logo" className="h-16 w-16" />
+                    <img src="./apl-core-logo.png" alt="APL Core Logo" className="h-16 w-16" />
                 </div>
 
                 <h1 className="text-3xl font-bold tracking-tight text-white mb-2">

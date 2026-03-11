@@ -14,9 +14,9 @@ import configRoutes from './routes/config/configRoutes.js';
 // 🔧 CORS Configuration
 const corsOptions = {
   // Replace with your actual frontend URL (e.g., http://localhost:5173 for Vite)
-  origin: ["http://localhost:5173"],
+  origin: ["http://localhost:5173", "http://localhost:5000"], // Added localhost:5000 for Electron
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization", "x-app-session"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Client-Type", "x-app-session"], // Added X-Client-Type
   credentials: true, // Crucial if you use Cookies for Auth
 };
 

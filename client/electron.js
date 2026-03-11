@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain, safeStorage } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -16,12 +16,13 @@ function createWindow() {
         minHeight: 700,
         frame: true,
         titleBarStyle: 'default',
-        icon: path.join(__dirname, 'assets', 'icon.png'), // Optional: add your app icon
+        icon: path.join(__dirname, 'src', 'assets', 'icon00.ico'),
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
             webSecurity: true,
             partition: "persist:aplcore",
+            preload: path.join(__dirname, 'preload.js'),
             // Allow loading from localhost during development
             allowRunningInsecureContent: false
         }
@@ -47,6 +48,55 @@ function createWindow() {
         return { action: 'allow' };
     });
 }
+
+// IPC Handlers for secure token storage using OS keychain
+ipcMain.handle('store-token', async (event, token) => {
+    try {
+        if (!safeStorage.isEncryptionAvailable()) {
+            // console.error('❌ Encryption not available on this system');
+            return { success: false, error: 'Encryption not available' };
+        }
+
+        // Encrypt and store token
+        const encryptedToken = safeStorage.encryptString(token);
+        // Store in a global variable or use electron-store for persistence
+        global.encryptedAuthToken = encryptedToken.toString('base64');
+        // console.log('✅ Token encrypted and stored securely');
+        return { success: true };
+    } catch (error) {
+        // console.error('❌ Failed to store token:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('get-token', async () => {
+    try {
+        if (!global.encryptedAuthToken) {
+            // console.log('⚠️ No token found in secure storage');
+            return null;
+        }
+
+        // Decrypt token
+        const buffer = Buffer.from(global.encryptedAuthToken, 'base64');
+        const decryptedToken = safeStorage.decryptString(buffer);
+        // console.log('✅ Token retrieved and decrypted successfully');
+        return decryptedToken;
+    } catch (error) {
+        // console.error('❌ Failed to retrieve token:', error);
+        return null;
+    }
+});
+
+ipcMain.handle('remove-token', async () => {
+    try {
+        global.encryptedAuthToken = null;
+        // console.log('✅ Token removed from secure storage');
+        return { success: true };
+    } catch (error) {
+        // console.error('❌ Failed to remove token:', error);
+        return { success: false, error: error.message };
+    }
+});
 
 // When Electron is ready
 app.whenReady().then(createWindow);

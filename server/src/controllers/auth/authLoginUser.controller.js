@@ -38,9 +38,22 @@ export const loginUser = async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000
         });
 
+        // 6. ELECTRON SUPPORT: If request is from Electron, also send token in response body
+        const isElectronClient = req.headers['x-client-type'] === 'electron';
+
+        // DEBUG: Log the header detection
+        console.log('🔍 [Backend] Login request headers:', {
+            'x-client-type': req.headers['x-client-type'],
+            'user-agent': req.headers['user-agent']
+        });
+        console.log('🔍 [Backend] Detected Electron client:', isElectronClient);
+        console.log('🔍 [Backend] Will send token in response:', isElectronClient);
+
         res.status(200).json({
             message: "Success",
-            role: user.role
+            role: user.role,
+            // Only include token in response for Electron clients
+            ...(isElectronClient && { token })
         });
 
     } catch (error) {
