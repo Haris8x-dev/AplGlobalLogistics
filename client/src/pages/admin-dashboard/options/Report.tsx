@@ -506,7 +506,7 @@ const Report = () => {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-slate-700">
-                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Date & Time</th>
+                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Entry Date & Time</th>
                                     <th className="text-left py-3 px-4 text-slate-400 font-medium">Type</th>
                                     <th className="text-left py-3 px-4 text-slate-400 font-medium">Model</th>
                                     <th className="text-right py-3 px-4 text-slate-400 font-medium">Quantity</th>
