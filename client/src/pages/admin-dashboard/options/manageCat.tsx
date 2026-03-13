@@ -309,8 +309,8 @@ const ManageCat: React.FC = () => {
             </div>
 
             {/* Search Filter */}
-            <div className="mb-6">
-                <div className="relative max-w-md">
+            <div className="mb-6 max-w-md">
+                <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                     <input
                         type="text"
@@ -324,7 +324,7 @@ const ManageCat: React.FC = () => {
 
             {/* Action Buttons */}
             {!showAddForm && (
-                <div className="mb-6 flex items-center gap-3">
+                <div className="mb-6 flex flex-wrap items-center gap-3">
                     <button
                         onClick={() => setShowAddForm(true)}
                         className="flex items-center gap-2 px-6 py-3 bg-[var(--apl-cyan)] text-white rounded-xl hover:bg-[var(--apl-cyan)]/80 transition-all"
@@ -402,7 +402,7 @@ const ManageCat: React.FC = () => {
                 </div>
             )}
 
-            {/* Categories Grid */}
+            {/* Categories Table */}
             {loading ? (
                 <div className="text-center py-12 text-slate-400">Loading categories...</div>
             ) : filteredCategories.length === 0 ? (
@@ -412,187 +412,173 @@ const ManageCat: React.FC = () => {
                         : "No categories match your search criteria."}
                 </div>
             ) : (
-                <>
-                    <div className="mb-4">
+                <div className="bg-slate-800/30 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden">
+                    <div className="px-6 py-3 bg-slate-900/50 border-b border-white/5">
                         <p className="text-sm text-slate-400">
                             Showing <span className="text-[var(--apl-cyan)] font-semibold">{filteredCategories.length}</span> of {categories.length} categories
                         </p>
                     </div>
+                    <table className="w-full">
+                        <thead className="bg-slate-900/50">
+                            <tr>
+                                {selectionMode && (
+                                    <th className="px-4 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Select</th>
+                                )}
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Category</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Models</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Created</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {filteredCategories.map((category) => {
+                                const isExpanded = expandedCategories.has(category.id);
+                                const models = categoryModels[category.id] || [];
+                                const isLoadingModels = loadingModels.has(category.id);
+                                const isEditing = editingCategoryId === category.id;
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {filteredCategories.map((category) => {
-                            const isExpanded = expandedCategories.has(category.id);
-                            const models = categoryModels[category.id] || [];
-                            const isLoadingModels = loadingModels.has(category.id);
-                            const isEditing = editingCategoryId === category.id;
-
-                            return (
-                                <div
-                                    key={category.id}
-                                    className={`bg-slate-800/30 backdrop-blur-xl border rounded-xl p-4 transition-all relative ${selectedCategoryId === category.id
-                                        ? "border-green-500/50 shadow-lg shadow-green-500/20"
-                                        : selectionMode
-                                            ? "border-blue-500/30 hover:border-blue-500/50 cursor-pointer"
-                                            : "border-white/5 hover:border-[var(--apl-cyan)]/20"
-                                        }`}
-                                    onClick={() => selectionMode && !isEditing && handleCategorySelect(category.id)}
-                                >
-                                    {/* Checkbox for selection mode */}
-                                    {selectionMode && (
-                                        <div className="absolute top-4 right-4 z-10">
-                                            <div
-                                                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${selectedCategoryId === category.id
-                                                    ? "bg-green-500 border-green-500"
-                                                    : "bg-slate-900/60 border-slate-600 hover:border-blue-400"
-                                                    }`}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleCategorySelect(category.id);
-                                                }}
-                                            >
-                                                {selectedCategoryId === category.id && (
-                                                    <Check size={14} className="text-white" />
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {/* Header */}
-                                    <div className="flex items-start justify-between mb-3">
-                                        <div className="flex items-center gap-2 flex-1">
-                                            <div className="w-8 h-8 rounded-lg bg-[var(--apl-cyan)]/10 flex items-center justify-center flex-shrink-0">
-                                                <FolderTree size={16} className="text-[var(--apl-cyan)]" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                {isEditing ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editingCategoryName}
-                                                        onChange={(e) => setEditingCategoryName(e.target.value)}
-                                                        className="w-full px-2 py-1 text-sm rounded bg-slate-900/60 border border-[var(--apl-cyan)]/30 text-white focus:outline-none focus:border-[var(--apl-cyan)]"
-                                                        autoFocus
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') handleUpdateCategory(category.id);
-                                                            if (e.key === 'Escape') cancelEdit();
-                                                        }}
-                                                    />
-                                                ) : (
-                                                    <h3 className="text-base font-bold text-white truncate">{category.name}</h3>
-                                                )}
-                                                <p className="text-[10px] text-slate-500">
-                                                    {new Date(category.createdAt).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {isEditing ? (
-                                            <div className="flex gap-1">
-                                                <button
-                                                    onClick={() => handleUpdateCategory(category.id)}
-                                                    className="p-1 hover:bg-green-500/10 text-green-400 rounded transition-all"
-                                                    title="Save"
-                                                >
-                                                    <Check size={14} />
-                                                </button>
-                                                <button
-                                                    onClick={cancelEdit}
-                                                    className="p-1 hover:bg-red-500/10 text-red-400 rounded transition-all"
-                                                    title="Cancel"
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        ) : !selectionMode ? (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    startEditCategory(category);
-                                                }}
-                                                className="p-1 hover:bg-white/5 rounded transition-all"
-                                                title="Edit name"
-                                            >
-                                                <Edit2 size={14} className="text-slate-400" />
-                                            </button>
-                                        ) : null}
-                                    </div>
-
-                                    {/* Stats - Smaller */}
-                                    <div className="mb-3">
-                                        <div className="flex items-center justify-between py-1.5 px-2 bg-slate-900/40 rounded-lg">
-                                            <span className="text-xs text-slate-400">Total Models</span>
-                                            <span className="text-white font-semibold text-sm">{category.models.length}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Status Badge */}
-                                    <div className="mb-3">
-                                        <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${category.isActive
-                                            ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                                            : "bg-red-500/10 text-red-400 border border-red-500/20"
-                                            }`}>
-                                            {category.isActive ? "Active" : "Inactive"}
-                                        </span>
-                                    </div>
-
-                                    {/* Actions */}
-                                    {!selectionMode && (
-                                        <div className="flex flex-col gap-2">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    toggleCategoryExpansion(category.id);
-                                                }}
-                                                className="flex items-center justify-center gap-2 px-3 py-1.5 bg-[var(--apl-cyan)]/10 text-[var(--apl-cyan)] hover:bg-[var(--apl-cyan)]/20 rounded-lg transition-all text-xs"
-                                            >
-                                                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                                {isExpanded ? "Hide Models" : "View Models"}
-                                            </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleToggleStatus(category.id);
-                                                }}
-                                                className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs ${category.isActive
-                                                    ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                                                    : "bg-green-500/10 text-green-400 hover:bg-green-500/20"
-                                                    }`}
-                                            >
-                                                <Power size={14} />
-                                                {category.isActive ? "Deactivate" : "Activate"}
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {/* Models Dropdown */}
-                                    {isExpanded && (
-                                        <div className="mt-3 pt-3 border-t border-white/5">
-                                            {isLoadingModels ? (
-                                                <p className="text-xs text-slate-400 text-center py-2">Loading models...</p>
-                                            ) : models.length === 0 ? (
-                                                <p className="text-xs text-slate-400 text-center py-2">No models found</p>
-                                            ) : (
-                                                <div className="space-y-1 max-h-40 overflow-y-auto">
-                                                    {models.map((model) => (
-                                                        <div
-                                                            key={model.id}
-                                                            className="flex items-center justify-between px-2 py-1.5 bg-slate-900/40 rounded text-xs hover:bg-slate-900/60 transition-all"
-                                                        >
-                                                            <span className="text-white">{model.name}</span>
-                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] ${model.isActive
-                                                                ? "bg-green-500/10 text-green-400"
-                                                                : "bg-red-500/10 text-red-400"
-                                                                }`}>
-                                                                {model.isActive ? "Active" : "Inactive"}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
+                                return (
+                                    <React.Fragment key={category.id}>
+                                        <tr className={`transition-colors ${selectedCategoryId === category.id ? "bg-green-500/10" : "hover:bg-white/5"}`}>
+                                            {selectionMode && (
+                                                <td className="px-4 py-4">
+                                                    <button
+                                                        onClick={() => handleCategorySelect(category.id)}
+                                                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${selectedCategoryId === category.id
+                                                            ? "bg-green-500 border-green-500"
+                                                            : "bg-slate-900/60 border-slate-600 hover:border-blue-400"
+                                                            }`}
+                                                        title="Select category"
+                                                    >
+                                                        {selectedCategoryId === category.id && (
+                                                            <Check size={14} className="text-white" />
+                                                        )}
+                                                    </button>
+                                                </td>
                                             )}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <FolderTree size={16} className="text-[var(--apl-cyan)]" />
+                                                    {isEditing ? (
+                                                        <input
+                                                            type="text"
+                                                            value={editingCategoryName}
+                                                            onChange={(e) => setEditingCategoryName(e.target.value)}
+                                                            className="w-full max-w-xs px-2 py-1 text-sm rounded bg-slate-900/60 border border-[var(--apl-cyan)]/30 text-white focus:outline-none focus:border-[var(--apl-cyan)]"
+                                                            autoFocus
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") handleUpdateCategory(category.id);
+                                                                if (e.key === "Escape") cancelEdit();
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <span className="text-white font-medium">{category.name}</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-300">{category.models.length}</td>
+                                            <td className="px-6 py-4 text-slate-300">{new Date(category.createdAt).toLocaleDateString()}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${category.isActive
+                                                    ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                                                    : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                    }`}>
+                                                    {category.isActive ? "Active" : "Inactive"}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    {isEditing ? (
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleUpdateCategory(category.id)}
+                                                                className="p-2 hover:bg-green-500/10 text-green-400 rounded-lg transition-all"
+                                                                title="Save"
+                                                            >
+                                                                <Check size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={cancelEdit}
+                                                                className="p-2 hover:bg-red-500/10 text-red-400 rounded-lg transition-all"
+                                                                title="Cancel"
+                                                            >
+                                                                <X size={16} />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            {!selectionMode && (
+                                                                <button
+                                                                    onClick={() => startEditCategory(category)}
+                                                                    className="p-2 hover:bg-[var(--apl-cyan)]/10 text-[var(--apl-cyan)] rounded-lg transition-all"
+                                                                    title="Edit name"
+                                                                >
+                                                                    <Edit2 size={16} />
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                onClick={() => toggleCategoryExpansion(category.id)}
+                                                                className="p-2 hover:bg-white/10 text-slate-300 rounded-lg transition-all"
+                                                                title={isExpanded ? "Hide models" : "View models"}
+                                                            >
+                                                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                                            </button>
+                                                            {!selectionMode && (
+                                                                <button
+                                                                    onClick={() => handleToggleStatus(category.id)}
+                                                                    className={`p-2 rounded-lg transition-all ${category.isActive
+                                                                        ? "hover:bg-red-500/10 text-red-400"
+                                                                        : "hover:bg-green-500/10 text-green-400"
+                                                                        }`}
+                                                                    title={category.isActive ? "Deactivate" : "Activate"}
+                                                                >
+                                                                    <Power size={16} />
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                        {isExpanded && (
+                                            <tr className="bg-slate-900/30">
+                                                <td colSpan={selectionMode ? 6 : 5} className="px-6 py-4">
+                                                    <div className="rounded-xl border border-white/5 bg-slate-900/50 p-4">
+                                                        <p className="text-xs font-semibold text-slate-400 uppercase mb-3">Models</p>
+                                                        {isLoadingModels ? (
+                                                            <p className="text-sm text-slate-400">Loading models...</p>
+                                                        ) : models.length === 0 ? (
+                                                            <p className="text-sm text-slate-400">No models found</p>
+                                                        ) : (
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                                                                {models.map((model) => (
+                                                                    <div
+                                                                        key={model.id}
+                                                                        className="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-800/60"
+                                                                    >
+                                                                        <span className="text-sm text-white">{model.name}</span>
+                                                                        <span className={`px-2 py-0.5 rounded text-xs ${model.isActive
+                                                                            ? "bg-green-500/10 text-green-400"
+                                                                            : "bg-red-500/10 text-red-400"
+                                                                            }`}>
+                                                                            {model.isActive ? "Active" : "Inactive"}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             )}
         </div>
     );

@@ -310,7 +310,7 @@ const ManageModels: React.FC = () => {
                 </div>
             )}
 
-            {/* Models Grid */}
+            {/* Models Table */}
             {loading ? (
                 <div className="text-center py-12 text-slate-400">Loading models...</div>
             ) : filteredModels.length === 0 ? (
@@ -320,133 +320,131 @@ const ManageModels: React.FC = () => {
                         : "No models match your search criteria."}
                 </div>
             ) : (
-                <>
-                    <div className="mb-4">
+                <div className="bg-slate-800/30 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden">
+                    <div className="px-6 py-3 bg-slate-900/50 border-b border-white/5">
                         <p className="text-sm text-slate-400">
                             Showing <span className="text-[var(--apl-cyan)] font-semibold">{filteredModels.length}</span> of {models.length} models
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {filteredModels.map((model) => {
-                            const isEditing = editingModelId === model.id;
+                    <table className="w-full">
+                        <thead className="bg-slate-900/50">
+                            <tr>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Model</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Category</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Created</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {filteredModels.map((model) => {
+                                const isEditing = editingModelId === model.id;
 
-                            return (
-                                <div
-                                    key={model.id}
-                                    className="bg-slate-800/30 backdrop-blur-xl border border-white/5 rounded-xl p-4 hover:border-[var(--apl-cyan)]/20 transition-all"
-                                >
-                                    {/* Header */}
-                                    <div className="flex items-start justify-between mb-3">
-                                        <div className="flex items-center gap-2 flex-1">
-                                            <div className="w-8 h-8 rounded-lg bg-[var(--apl-cyan)]/10 flex items-center justify-center flex-shrink-0">
-                                                <Smartphone size={16} className="text-[var(--apl-cyan)]" />
+                                return (
+                                    <tr key={model.id} className="hover:bg-white/5 transition-colors">
+                                        <td className="px-6 py-4">
+                                            {isEditing ? (
+                                                <input
+                                                    type="text"
+                                                    value={editingModelName}
+                                                    onChange={(e) => setEditingModelName(e.target.value)}
+                                                    className="w-full max-w-xs px-2 py-1.5 text-sm rounded bg-slate-900/60 border border-[var(--apl-cyan)]/30 text-white focus:outline-none focus:border-[var(--apl-cyan)]"
+                                                    autoFocus
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") handleUpdateModel(model.id);
+                                                        if (e.key === "Escape") cancelEdit();
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <Smartphone size={16} className="text-[var(--apl-cyan)]" />
+                                                    <span className="text-white font-medium">{model.name}</span>
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {isEditing ? (
+                                                <select
+                                                    value={editingCategoryId}
+                                                    onChange={(e) => setEditingCategoryId(e.target.value)}
+                                                    className="w-full max-w-xs px-2 py-1.5 text-sm rounded bg-slate-900/60 border border-slate-700/50 text-white focus:outline-none focus:border-[var(--apl-cyan)]"
+                                                >
+                                                    {categories.map((cat) => (
+                                                        <option key={cat.id} value={cat.id}>
+                                                            {cat.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <span className="text-slate-300">{model.category.name}</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 text-slate-300">{new Date(model.createdAt).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${model.isActive
+                                                    ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                                                    : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                    }`}>
+                                                    {model.isActive ? "Active" : "Inactive"}
+                                                </span>
+                                                <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${model.category.isActive
+                                                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                                    : "bg-orange-500/10 text-orange-400 border border-orange-500/20"
+                                                    }`}>
+                                                    Cat: {model.category.isActive ? "Active" : "Inactive"}
+                                                </span>
                                             </div>
-                                            <div className="flex-1 min-w-0">
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
                                                 {isEditing ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editingModelName}
-                                                        onChange={(e) => setEditingModelName(e.target.value)}
-                                                        className="w-full px-2 py-1 text-sm rounded bg-slate-900/60 border border-[var(--apl-cyan)]/30 text-white focus:outline-none focus:border-[var(--apl-cyan)]"
-                                                        autoFocus
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') handleUpdateModel(model.id);
-                                                            if (e.key === 'Escape') cancelEdit();
-                                                        }}
-                                                    />
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleUpdateModel(model.id)}
+                                                            className="p-2 hover:bg-green-500/10 text-green-400 rounded-lg transition-all"
+                                                            title="Save"
+                                                        >
+                                                            <Check size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={cancelEdit}
+                                                            className="p-2 hover:bg-red-500/10 text-red-400 rounded-lg transition-all"
+                                                            title="Cancel"
+                                                        >
+                                                            <X size={16} />
+                                                        </button>
+                                                    </>
                                                 ) : (
-                                                    <h3 className="text-base font-bold text-white truncate">{model.name}</h3>
+                                                    <>
+                                                        <button
+                                                            onClick={() => startEditModel(model)}
+                                                            className="p-2 hover:bg-[var(--apl-cyan)]/10 text-[var(--apl-cyan)] rounded-lg transition-all"
+                                                            title="Edit model"
+                                                        >
+                                                            <Edit2 size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleToggleStatus(model.id)}
+                                                            className={`p-2 rounded-lg transition-all ${model.isActive
+                                                                ? "hover:bg-red-500/10 text-red-400"
+                                                                : "hover:bg-green-500/10 text-green-400"
+                                                                }`}
+                                                            title={model.isActive ? "Deactivate" : "Activate"}
+                                                        >
+                                                            <Power size={16} />
+                                                        </button>
+                                                    </>
                                                 )}
-                                                <p className="text-[10px] text-slate-500">
-                                                    {new Date(model.createdAt).toLocaleDateString()}
-                                                </p>
                                             </div>
-                                        </div>
-                                        {isEditing ? (
-                                            <div className="flex gap-1">
-                                                <button
-                                                    onClick={() => handleUpdateModel(model.id)}
-                                                    className="p-1 hover:bg-green-500/10 text-green-400 rounded transition-all"
-                                                    title="Save"
-                                                >
-                                                    <Check size={14} />
-                                                </button>
-                                                <button
-                                                    onClick={cancelEdit}
-                                                    className="p-1 hover:bg-red-500/10 text-red-400 rounded transition-all"
-                                                    title="Cancel"
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => startEditModel(model)}
-                                                className="p-1 hover:bg-white/5 rounded transition-all"
-                                                title="Edit model"
-                                            >
-                                                <Edit2 size={14} className="text-slate-400" />
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {/* Category */}
-                                    <div className="mb-3">
-                                        {isEditing ? (
-                                            <select
-                                                value={editingCategoryId}
-                                                onChange={(e) => setEditingCategoryId(e.target.value)}
-                                                className="w-full px-2 py-1.5 text-xs rounded bg-slate-900/60 border border-slate-700/50 text-white focus:outline-none focus:border-[var(--apl-cyan)]"
-                                            >
-                                                {categories.map((cat) => (
-                                                    <option key={cat.id} value={cat.id}>
-                                                        {cat.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <div className="flex items-center justify-between py-1.5 px-2 bg-slate-900/40 rounded-lg">
-                                                <span className="text-xs text-slate-400">Category</span>
-                                                <span className="text-white font-medium text-sm">{model.category.name}</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Status Badges */}
-                                    <div className="mb-3 flex gap-2">
-                                        <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${model.isActive
-                                            ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                                            : "bg-red-500/10 text-red-400 border border-red-500/20"
-                                            }`}>
-                                            {model.isActive ? "Active" : "Inactive"}
-                                        </span>
-                                        <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${model.category.isActive
-                                            ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                                            : "bg-orange-500/10 text-orange-400 border border-orange-500/20"
-                                            }`}>
-                                            Cat: {model.category.isActive ? "Active" : "Inactive"}
-                                        </span>
-                                    </div>
-
-                                    {/* Actions */}
-                                    {!isEditing && (
-                                        <button
-                                            onClick={() => handleToggleStatus(model.id)}
-                                            className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs ${model.isActive
-                                                ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                                                : "bg-green-500/10 text-green-400 hover:bg-green-500/20"
-                                                }`}
-                                        >
-                                            <Power size={14} />
-                                            {model.isActive ? "Deactivate" : "Activate"}
-                                        </button>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             )}
         </div>
     );

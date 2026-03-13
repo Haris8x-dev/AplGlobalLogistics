@@ -489,7 +489,7 @@ const ManageUsers: React.FC = () => {
                 </div>
             )}
 
-            {/* Users List */}
+            {/* Users Table */}
             {loading ? (
                 <div className="text-center py-12 text-slate-400">Loading users...</div>
             ) : filteredUsers.length === 0 ? (
@@ -499,198 +499,187 @@ const ManageUsers: React.FC = () => {
                         : "No users match your search criteria."}
                 </div>
             ) : (
-                <>
-                    <div className="mb-4">
+                <div className="bg-slate-800/30 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden">
+                    <div className="px-6 py-3 bg-slate-900/50 border-b border-white/5">
                         <p className="text-sm text-slate-400">
                             Showing <span className="text-[var(--apl-cyan)] font-semibold">{filteredUsers.length}</span> of {users.length} users
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {filteredUsers.map((user) => {
-                            const isEditing = editingUserId === user.id;
-                            const isChangingRole = changingRoleUserId === user.id;
+                    <table className="w-full">
+                        <thead className="bg-slate-900/50">
+                            <tr>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Name</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Email</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Phone</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Role</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {filteredUsers.map((user) => {
+                                const isEditing = editingUserId === user.id;
+                                const isChangingRole = changingRoleUserId === user.id;
 
-                            return (
-                                <div
-                                    key={user.id}
-                                    className="bg-slate-800/30 backdrop-blur-xl border border-white/5 rounded-xl p-4 hover:border-[var(--apl-cyan)]/20 transition-all"
-                                >
-                                    {/* Header */}
-                                    <div className="flex items-start justify-between mb-3">
-                                        <div className="flex items-center gap-2 flex-1">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${user.role === "ADMIN"
-                                                ? "bg-purple-500/10"
-                                                : "bg-[var(--apl-cyan)]/10"
-                                                }`}>
-                                                {user.role === "ADMIN" ? (
-                                                    <Shield size={16} className="text-purple-400" />
-                                                ) : (
-                                                    <UserCircle size={16} className="text-[var(--apl-cyan)]" />
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="text-base font-bold text-white truncate">{user.fullName}</h3>
-                                                <p className="text-[10px] text-slate-500">
-                                                    {new Date(user.createdAt).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {!isEditing && !isChangingRole && (
-                                            <button
-                                                onClick={() => startEditUser(user)}
-                                                className="p-1 hover:bg-white/5 rounded transition-all"
-                                                title="Edit user"
-                                            >
-                                                <Edit2 size={14} className="text-slate-400" />
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {/* User Info */}
-                                    {!isEditing && !isChangingRole && (
-                                        <>
-                                            <div className="space-y-1.5 mb-3">
-                                                <div className="flex items-center gap-2 text-xs">
-                                                    <Mail size={12} className="text-slate-500" />
-                                                    <span className="text-slate-300 truncate">{user.email}</span>
+                                return (
+                                    <React.Fragment key={user.id}>
+                                        <tr className="hover:bg-white/5 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    {user.role === "ADMIN" ? (
+                                                        <Shield size={16} className="text-purple-400" />
+                                                    ) : (
+                                                        <UserCircle size={16} className="text-[var(--apl-cyan)]" />
+                                                    )}
+                                                    <div>
+                                                        <div className="text-white font-medium">{user.fullName}</div>
+                                                        <div className="text-xs text-slate-500">{new Date(user.createdAt).toLocaleDateString()}</div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 text-xs">
-                                                    <Phone size={12} className="text-slate-500" />
-                                                    <span className="text-slate-300">{user.phoneNumber}</span>
-                                                </div>
-                                            </div>
-
-                                            {/* Role & Status Badges */}
-                                            <div className="flex items-center gap-2 mb-3">
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-300">{user.email}</td>
+                                            <td className="px-6 py-4 text-slate-300">{user.phoneNumber}</td>
+                                            <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${user.role === "ADMIN"
                                                     ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
                                                     : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
                                                     }`}>
                                                     {user.role}
                                                 </span>
+                                            </td>
+                                            <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${user.isActive
                                                     ? "bg-green-500/10 text-green-400 border border-green-500/20"
                                                     : "bg-red-500/10 text-red-400 border border-red-500/20"
                                                     }`}>
                                                     {user.isActive ? "Active" : "Inactive"}
                                                 </span>
-                                            </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => startEditUser(user)}
+                                                        className="p-2 hover:bg-[var(--apl-cyan)]/10 text-[var(--apl-cyan)] rounded-lg transition-all"
+                                                        title="Edit user"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => startRoleChange(user)}
+                                                        className="p-2 hover:bg-purple-500/10 text-purple-400 rounded-lg transition-all"
+                                                        title="Change role"
+                                                    >
+                                                        <RefreshCw size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleToggleStatus(user.id)}
+                                                        className={`p-2 rounded-lg transition-all ${user.isActive
+                                                            ? "hover:bg-red-500/10 text-red-400"
+                                                            : "hover:bg-green-500/10 text-green-400"
+                                                            }`}
+                                                        title={user.isActive ? "Deactivate" : "Activate"}
+                                                    >
+                                                        <Power size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
 
-                                            {/* Actions */}
-                                            <div className="flex flex-col gap-2">
-                                                <button
-                                                    onClick={() => startRoleChange(user)}
-                                                    className="flex items-center justify-center gap-2 px-3 py-1.5 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 rounded-lg transition-all text-xs"
-                                                >
-                                                    <RefreshCw size={14} />
-                                                    Change Role
-                                                </button>
-                                                <button
-                                                    onClick={() => handleToggleStatus(user.id)}
-                                                    className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs ${user.isActive
-                                                        ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                                                        : "bg-green-500/10 text-green-400 hover:bg-green-500/20"
-                                                        }`}
-                                                >
-                                                    <Power size={14} />
-                                                    {user.isActive ? "Deactivate" : "Activate"}
-                                                </button>
-                                            </div>
-                                        </>
-                                    )}
+                                        {isEditing && (
+                                            <tr className="bg-slate-900/30">
+                                                <td colSpan={6} className="px-6 py-4">
+                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={editFormData.fullName}
+                                                            onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
+                                                            className="w-full px-3 py-2 text-sm rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
+                                                            placeholder="Full Name"
+                                                        />
+                                                        <input
+                                                            type="email"
+                                                            value={editFormData.email}
+                                                            onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                                                            className="w-full px-3 py-2 text-sm rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
+                                                            placeholder="Email"
+                                                        />
+                                                        <input
+                                                            type="tel"
+                                                            value={editFormData.phoneNumber}
+                                                            onChange={(e) => setEditFormData({ ...editFormData, phoneNumber: e.target.value })}
+                                                            className="w-full px-3 py-2 text-sm rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
+                                                            placeholder="Phone Number"
+                                                        />
+                                                        <input
+                                                            type="password"
+                                                            value={editFormData.password}
+                                                            onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                                                            className="w-full px-3 py-2 text-sm rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
+                                                            placeholder="New Password (optional)"
+                                                        />
+                                                    </div>
+                                                    <div className="flex gap-2 mt-3">
+                                                        <button
+                                                            onClick={() => handleUpdateUser(user.id)}
+                                                            className="flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg transition-all text-sm"
+                                                        >
+                                                            <Check size={14} />
+                                                            Save
+                                                        </button>
+                                                        <button
+                                                            onClick={cancelEdit}
+                                                            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-all text-sm"
+                                                        >
+                                                            <X size={14} />
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
 
-                                    {/* Edit Form */}
-                                    {isEditing && (
-                                        <div className="space-y-2">
-                                            <input
-                                                type="text"
-                                                value={editFormData.fullName}
-                                                onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
-                                                className="w-full px-2 py-1.5 text-xs rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
-                                                placeholder="Full Name"
-                                            />
-                                            <input
-                                                type="email"
-                                                value={editFormData.email}
-                                                onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                                                className="w-full px-2 py-1.5 text-xs rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
-                                                placeholder="Email"
-                                            />
-                                            <input
-                                                type="tel"
-                                                value={editFormData.phoneNumber}
-                                                onChange={(e) => setEditFormData({ ...editFormData, phoneNumber: e.target.value })}
-                                                className="w-full px-2 py-1.5 text-xs rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
-                                                placeholder="Phone Number"
-                                            />
-                                            <input
-                                                type="password"
-                                                value={editFormData.password}
-                                                onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
-                                                className="w-full px-2 py-1.5 text-xs rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
-                                                placeholder="New Password (optional)"
-                                            />
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => handleUpdateUser(user.id)}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg transition-all text-xs"
-                                                >
-                                                    <Check size={12} />
-                                                    Save
-                                                </button>
-                                                <button
-                                                    onClick={cancelEdit}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-all text-xs"
-                                                >
-                                                    <X size={12} />
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Role Change Form */}
-                                    {isChangingRole && (
-                                        <div className="space-y-2">
-                                            <div className="p-2 bg-slate-900/60 rounded-lg">
-                                                <p className="text-xs text-slate-400 mb-1">Change role to:</p>
-                                                <p className="text-sm font-bold text-[var(--apl-cyan)]">
-                                                    {newRole === "ADMIN" ? "Admin" : "Employee"}
-                                                </p>
-                                            </div>
-                                            {newRole === "ADMIN" && (
-                                                <input
-                                                    type="password"
-                                                    value={roleSecretCode}
-                                                    onChange={(e) => setRoleSecretCode(e.target.value)}
-                                                    className="w-full px-2 py-1.5 text-xs rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
-                                                    placeholder="Admin Secret Code *"
-                                                />
-                                            )}
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={handleUpdateRole}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg transition-all text-xs"
-                                                >
-                                                    <Check size={12} />
-                                                    Confirm
-                                                </button>
-                                                <button
-                                                    onClick={cancelRoleChange}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-all text-xs"
-                                                >
-                                                    <X size={12} />
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </>
+                                        {isChangingRole && (
+                                            <tr className="bg-slate-900/30">
+                                                <td colSpan={6} className="px-6 py-4">
+                                                    <div className="flex flex-wrap items-center gap-3">
+                                                        <div className="px-3 py-2 bg-slate-900/60 rounded-lg">
+                                                            <p className="text-xs text-slate-400">Change role to</p>
+                                                            <p className="text-sm font-bold text-[var(--apl-cyan)]">{newRole === "ADMIN" ? "Admin" : "Employee"}</p>
+                                                        </div>
+                                                        {newRole === "ADMIN" && (
+                                                            <input
+                                                                type="password"
+                                                                value={roleSecretCode}
+                                                                onChange={(e) => setRoleSecretCode(e.target.value)}
+                                                                className="px-3 py-2 text-sm rounded-lg bg-slate-900/60 border border-slate-700/50 text-white focus:border-[var(--apl-cyan)] outline-none"
+                                                                placeholder="Admin Secret Code *"
+                                                            />
+                                                        )}
+                                                        <button
+                                                            onClick={handleUpdateRole}
+                                                            className="flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg transition-all text-sm"
+                                                        >
+                                                            <Check size={14} />
+                                                            Confirm
+                                                        </button>
+                                                        <button
+                                                            onClick={cancelRoleChange}
+                                                            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-all text-sm"
+                                                        >
+                                                            <X size={14} />
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             )}
         </div>
     );
