@@ -13,6 +13,7 @@ interface Client {
     address: string;
     industry: string;
     isActive: boolean;
+    totalStockUnits?: number;
     _count?: {
         clientStocks: number;
     };
@@ -53,6 +54,7 @@ const Report = () => {
     const [history, setHistory] = useState<StockHistory[]>([]);
     const [searchClients, setSearchClients] = useState("");
     const [searchModels, setSearchModels] = useState("");
+    const [activeCategoryTab, setActiveCategoryTab] = useState<string>("ALL");
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -68,26 +70,7 @@ const Report = () => {
                 setLoading(true);
             }
             const response = await axiosInstance.get("/api/admin/clients/all");
-            const clientsData = response.data.clients || [];
-
-            // Fetch stock count for each client
-            const clientsWithStock = await Promise.all(
-                clientsData.map(async (client: Client) => {
-                    try {
-                        const stockRes = await axiosInstance.get(
-                            `/api/stock/client-inventory/${client.id}`
-                        );
-                        return {
-                            ...client,
-                            _count: { clientStocks: stockRes.data.inventory?.length || 0 }
-                        };
-                    } catch (error) {
-                        return { ...client, _count: { clientStocks: 0 } };
-                    }
-                })
-            );
-
-            setClients(clientsWithStock);
+            setClients(response.data.clients || []);
         } catch (error) {
             toast.error("Failed to fetch clients");
             console.error(error);
@@ -133,6 +116,8 @@ const Report = () => {
         fetchClientStocks(client.id);
         setSelectedModel(null);
         setHistory([]);
+        setSearchModels("");
+        setActiveCategoryTab("ALL");
     };
 
     const handleModelClick = (stock: ClientStock) => {
@@ -189,6 +174,7 @@ const Report = () => {
             "Address": client.address || "N/A",
             "Industry": client.industry || "N/A",
             "Total Models": client._count?.clientStocks || 0,
+            "Total Stock Units": client.totalStockUnits || 0,
             "Status": client.isActive ? "Active" : "Inactive",
         }));
 
@@ -208,8 +194,35 @@ const Report = () => {
     );
 
     const filteredStocks = clientStocks.filter((stock) =>
+        (activeCategoryTab === "ALL" || stock.model.category.name === activeCategoryTab) &&
         stock.model.name.toLowerCase().includes(searchModels.toLowerCase())
     );
+
+    const categoryTabs = Array.from(
+        new Set(clientStocks.map((stock) => stock.model.category.name || "Uncategorized"))
+    ).sort((a, b) => a.localeCompare(b));
+
+    const exportModelInventoryToExcel = () => {
+        if (filteredStocks.length === 0) {
+            toast.warning("No models to export");
+            return;
+        }
+
+        const data = filteredStocks.map((stock) => ({
+            "Category": stock.model.category.name,
+            "Model": stock.model.name,
+            "Current Stock": stock.currentBalance,
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Client Inventory");
+
+        const categorySuffix = activeCategoryTab === "ALL" ? "ALL" : activeCategoryTab;
+        const fileName = `${selectedClient?.companyName || "Client"}_Inventory_${categorySuffix}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(workbook, fileName);
+        toast.success("Inventory exported successfully");
+    };
 
     // View 1: Clients Table
     if (!selectedClient) {
@@ -295,6 +308,7 @@ const Report = () => {
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Phone</th>
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Industry</th>
                                         <th className="px-6 py-4 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Models</th>
+                                        <th className="px-6 py-4 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Stock</th>
                                         <th className="px-6 py-4 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
@@ -312,6 +326,11 @@ const Report = () => {
                                             <td className="px-6 py-4 text-center">
                                                 <span className="inline-flex items-center justify-center px-3 py-1 bg-(--apl-cyan)/10 text-(--apl-cyan) rounded-full text-sm font-semibold">
                                                     {client._count?.clientStocks || 0}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className="inline-flex items-center justify-center px-3 py-1 bg-green-500/10 text-green-400 rounded-full text-sm font-semibold">
+                                                    {client.totalStockUnits || 0}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-center">
@@ -371,20 +390,57 @@ const Report = () => {
                         </h1>
                         <p className="text-slate-400 text-sm">Select a model to view transaction history</p>
                     </div>
-                    <button
-                        onClick={() => {
-                            setRefreshing(true);
-                            fetchClientStocks(selectedClient.id).finally(() => setRefreshing(false));
-                        }}
-                        disabled={refreshing}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-(--apl-cyan) text-white rounded-xl hover:bg-(--apl-cyan)/80 transition-all disabled:opacity-50 font-medium"
-                    >
-                        <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
-                        {refreshing ? "Refreshing..." : "Refresh"}
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={exportModelInventoryToExcel}
+                            disabled={filteredStocks.length === 0}
+                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <FileSpreadsheet size={18} />
+                            Export Excel
+                        </button>
+                        <button
+                            onClick={() => {
+                                setRefreshing(true);
+                                fetchClientStocks(selectedClient.id).finally(() => setRefreshing(false));
+                            }}
+                            disabled={refreshing}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-(--apl-cyan) text-white rounded-xl hover:bg-(--apl-cyan)/80 transition-all disabled:opacity-50 font-medium"
+                        >
+                            <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
+                            {refreshing ? "Refreshing..." : "Refresh"}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-xl p-6">
+                    <div className="mb-4 flex items-center gap-2 flex-wrap">
+                        <button
+                            onClick={() => setActiveCategoryTab("ALL")}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeCategoryTab === "ALL"
+                                ? "bg-(--apl-cyan) text-white"
+                                : "bg-slate-900/50 text-slate-400 hover:bg-slate-800/60"
+                                }`}
+                        >
+                            All ({clientStocks.length})
+                        </button>
+                        {categoryTabs.map((category) => {
+                            const count = clientStocks.filter((stock) => stock.model.category.name === category).length;
+                            return (
+                                <button
+                                    key={category}
+                                    onClick={() => setActiveCategoryTab(category)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeCategoryTab === category
+                                        ? "bg-(--apl-cyan) text-white"
+                                        : "bg-slate-900/50 text-slate-400 hover:bg-slate-800/60"
+                                        }`}
+                                >
+                                    {category} ({count})
+                                </button>
+                            );
+                        })}
+                    </div>
+
                     <div className="flex items-center gap-4 mb-6">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -403,30 +459,44 @@ const Report = () => {
                     ) : filteredStocks.length === 0 ? (
                         <div className="text-center py-8 text-slate-400">No inventory found for this client</div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {filteredStocks.map((stock) => (
-                                <button
-                                    key={stock.id}
-                                    onClick={() => handleModelClick(stock)}
-                                    className="bg-slate-900/50 border border-slate-700 rounded-lg p-4 hover:border-(--apl-cyan) transition-all text-left"
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
-                                            <Package className="text-purple-400" size={20} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="text-white font-semibold">{stock.model.name}</h3>
-                                            <p className="text-slate-400 text-sm">{stock.model.category.name}</p>
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <span className="text-xs text-slate-500">Stock:</span>
-                                                <span className="text-lg font-bold text-(--apl-cyan)">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="bg-slate-900/50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Category</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Model</th>
+                                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Current Stock</th>
+                                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {filteredStocks.map((stock) => (
+                                        <tr key={stock.id} className="hover:bg-white/5 transition-colors">
+                                            <td className="px-4 py-3 text-slate-300">{stock.model.category.name}</td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    <Package className="text-purple-400" size={16} />
+                                                    <span className="text-white font-medium">{stock.model.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-center">
+                                                <span className="inline-flex items-center justify-center px-3 py-1 bg-(--apl-cyan)/10 text-(--apl-cyan) rounded-full text-sm font-semibold">
                                                     {stock.currentBalance}
                                                 </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </button>
-                            ))}
+                                            </td>
+                                            <td className="px-4 py-3 text-center">
+                                                <button
+                                                    onClick={() => handleModelClick(stock)}
+                                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-(--apl-cyan) text-white rounded-lg hover:bg-(--apl-cyan)/80 transition-all"
+                                                >
+                                                    <Eye size={15} />
+                                                    View
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </div>
