@@ -330,8 +330,10 @@ const AddStock = () => {
                                     required
                                 >
                                     <option value="IMPORT">Import</option>
-                                    {/* <option value="RESTOCK">Restock</option>
-                                    <option value="RETURN">Return</option> */}
+                                    <option value="TRANSFER-IN">Transfer-In</option>
+                                    <option value="TRANSFER-OUT">Transfer-Out</option>
+                                    <option value="LOCAL">Local</option>
+                                    <option value="EXPORT">Export</option>
                                 </select>
                                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
                             </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axiosInstance from "../../../utils/axiosConfig";
 import { ArrowLeft, Search, Download, Package, TrendingUp, TrendingDown, FileSpreadsheet, Eye, RefreshCw } from "lucide-react";
 import { toast } from "react-toastify";
@@ -46,6 +46,42 @@ interface StockHistory {
     };
 }
 
+const LoadingOverlay = ({ title, subtitle }: { title: string; subtitle: string }) => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div className="bg-slate-800/90 border border-white/10 rounded-2xl p-8 shadow-2xl">
+            <div className="flex flex-col items-center gap-4">
+                <div className="relative">
+                    <div className="w-16 h-16 border-4 border-slate-700 rounded-full"></div>
+                    <div className="w-16 h-16 border-4 border-(--apl-cyan) border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+                </div>
+                <div className="text-center">
+                    <h3 className="text-white font-semibold text-lg mb-1">{title}</h3>
+                    <p className="text-slate-400 text-sm">{subtitle}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
+const LoadingPanel = ({ message, showSpinner }: { message: string; showSpinner: boolean }) => (
+    <div className="py-14 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+            {showSpinner ? (
+                <div className="relative">
+                    <div className="w-12 h-12 border-4 border-slate-700 rounded-full"></div>
+                    <div className="w-12 h-12 border-4 border-(--apl-cyan) border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+                </div>
+            ) : (
+                <div className="w-12 h-12" />
+            )}
+            <p className="text-slate-400 text-sm">{message}</p>
+        </div>
+    </div>
+);
+
+const LOADER_SHOW_DELAY_MS = 250;
+const LOADER_MIN_VISIBLE_MS = 250;
+
 const Report = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -57,6 +93,68 @@ const Report = () => {
     const [activeCategoryTab, setActiveCategoryTab] = useState<string>("ALL");
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [showLoadingIndicator, setShowLoadingIndicator] = useState(false);
+    const [showRefreshingIndicator, setShowRefreshingIndicator] = useState(false);
+    const loadingVisibleAtRef = useRef<number | null>(null);
+    const refreshingVisibleAtRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        let showTimer: ReturnType<typeof setTimeout> | undefined;
+        let hideTimer: ReturnType<typeof setTimeout> | undefined;
+
+        if (loading) {
+            showTimer = setTimeout(() => {
+                loadingVisibleAtRef.current = Date.now();
+                setShowLoadingIndicator(true);
+            }, LOADER_SHOW_DELAY_MS);
+        } else if (showLoadingIndicator) {
+            const elapsed = loadingVisibleAtRef.current
+                ? Date.now() - loadingVisibleAtRef.current
+                : 0;
+            const remaining = Math.max(0, LOADER_MIN_VISIBLE_MS - elapsed);
+
+            hideTimer = setTimeout(() => {
+                setShowLoadingIndicator(false);
+                loadingVisibleAtRef.current = null;
+            }, remaining);
+        } else {
+            loadingVisibleAtRef.current = null;
+        }
+
+        return () => {
+            if (showTimer) clearTimeout(showTimer);
+            if (hideTimer) clearTimeout(hideTimer);
+        };
+    }, [loading, showLoadingIndicator]);
+
+    useEffect(() => {
+        let showTimer: ReturnType<typeof setTimeout> | undefined;
+        let hideTimer: ReturnType<typeof setTimeout> | undefined;
+
+        if (refreshing) {
+            showTimer = setTimeout(() => {
+                refreshingVisibleAtRef.current = Date.now();
+                setShowRefreshingIndicator(true);
+            }, LOADER_SHOW_DELAY_MS);
+        } else if (showRefreshingIndicator) {
+            const elapsed = refreshingVisibleAtRef.current
+                ? Date.now() - refreshingVisibleAtRef.current
+                : 0;
+            const remaining = Math.max(0, LOADER_MIN_VISIBLE_MS - elapsed);
+
+            hideTimer = setTimeout(() => {
+                setShowRefreshingIndicator(false);
+                refreshingVisibleAtRef.current = null;
+            }, remaining);
+        } else {
+            refreshingVisibleAtRef.current = null;
+        }
+
+        return () => {
+            if (showTimer) clearTimeout(showTimer);
+            if (hideTimer) clearTimeout(hideTimer);
+        };
+    }, [refreshing, showRefreshingIndicator]);
 
     useEffect(() => {
         fetchClients();
@@ -202,6 +300,28 @@ const Report = () => {
         new Set(clientStocks.map((stock) => stock.model.category.name || "Uncategorized"))
     ).sort((a, b) => a.localeCompare(b));
 
+    const categorySummaries = categoryTabs.map((category) => {
+        const categoryStocks = clientStocks.filter(
+            (stock) => (stock.model.category.name || "Uncategorized") === category
+        );
+
+        return {
+            category,
+            modelCount: categoryStocks.length,
+            totalStock: categoryStocks.reduce((sum, stock) => sum + stock.currentBalance, 0)
+        };
+    });
+
+    const filteredTotalStock = filteredStocks.reduce(
+        (sum, stock) => sum + stock.currentBalance,
+        0
+    );
+
+    const allCategorySummary = {
+        modelCount: clientStocks.length,
+        totalStock: clientStocks.reduce((sum, stock) => sum + stock.currentBalance, 0)
+    };
+
     const exportModelInventoryToExcel = () => {
         if (filteredStocks.length === 0) {
             toast.warning("No models to export");
@@ -214,9 +334,40 @@ const Report = () => {
             "Current Stock": stock.currentBalance,
         }));
 
+        const summaryData = activeCategoryTab === "ALL"
+            ? categorySummaries.map((summary) => ({
+                "Category": summary.category,
+                "Total Models": summary.modelCount,
+                "Total Current Stock": summary.totalStock,
+            }))
+            : [{
+                "Category": activeCategoryTab,
+                "Total Models": filteredStocks.length,
+                "Total Current Stock": filteredTotalStock,
+            }];
+
         const worksheet = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.sheet_add_aoa(
+            worksheet,
+            [
+                [],
+                ["Category Total Stock Units", "", filteredTotalStock]
+            ],
+            { origin: -1 }
+        );
+
+        const totalRowIndex = data.length + 3;
+        if (worksheet[`A${totalRowIndex}`]) {
+            worksheet[`A${totalRowIndex}`].s = { font: { bold: true } };
+        }
+        if (worksheet[`C${totalRowIndex}`]) {
+            worksheet[`C${totalRowIndex}`].s = { font: { bold: true } };
+        }
+
+        const summaryWorksheet = XLSX.utils.json_to_sheet(summaryData);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Client Inventory");
+        XLSX.utils.book_append_sheet(workbook, summaryWorksheet, "Category Summary");
 
         const categorySuffix = activeCategoryTab === "ALL" ? "ALL" : activeCategoryTab;
         const fileName = `${selectedClient?.companyName || "Client"}_Inventory_${categorySuffix}_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -228,22 +379,11 @@ const Report = () => {
     if (!selectedClient) {
         return (
             <div className="p-6 min-h-screen relative">
-                {/* Beautiful Loading Overlay */}
-                {refreshing && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-                        <div className="bg-slate-800/90 border border-white/10 rounded-2xl p-8 shadow-2xl">
-                            <div className="flex flex-col items-center gap-4">
-                                <div className="relative">
-                                    <div className="w-16 h-16 border-4 border-slate-700 rounded-full"></div>
-                                    <div className="w-16 h-16 border-4 border-(--apl-cyan) border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-                                </div>
-                                <div className="text-center">
-                                    <h3 className="text-white font-semibold text-lg mb-1">Refreshing Reports</h3>
-                                    <p className="text-slate-400 text-sm">Fetching latest data...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                {showRefreshingIndicator && (
+                    <LoadingOverlay
+                        title="Refreshing Reports"
+                        subtitle="Fetching latest data..."
+                    />
                 )}
 
                 <div className="mb-6 flex items-center justify-between">
@@ -286,7 +426,7 @@ const Report = () => {
                 </div>
 
                 {loading ? (
-                    <div className="text-center py-12 text-slate-400">Loading clients...</div>
+                    <LoadingPanel message="Loading clients..." showSpinner={showLoadingIndicator} />
                 ) : filteredClients.length === 0 ? (
                     <div className="text-center py-12 text-slate-400">
                         {clients.length === 0 ? "No clients found" : "No clients match your search"}
@@ -357,22 +497,18 @@ const Report = () => {
     if (selectedClient && !selectedModel) {
         return (
             <div className="p-6 min-h-screen relative">
-                {/* Beautiful Loading Overlay */}
-                {refreshing && (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-                        <div className="bg-slate-800/90 border border-white/10 rounded-2xl p-8 shadow-2xl">
-                            <div className="flex flex-col items-center gap-4">
-                                <div className="relative">
-                                    <div className="w-16 h-16 border-4 border-slate-700 rounded-full"></div>
-                                    <div className="w-16 h-16 border-4 border-(--apl-cyan) border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-                                </div>
-                                <div className="text-center">
-                                    <h3 className="text-white font-semibold text-lg mb-1">Refreshing Inventory</h3>
-                                    <p className="text-slate-400 text-sm">Fetching latest data...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                {showRefreshingIndicator && (
+                    <LoadingOverlay
+                        title="Refreshing Inventory"
+                        subtitle="Fetching latest data..."
+                    />
+                )}
+
+                {loading && !refreshing && showLoadingIndicator && (
+                    <LoadingOverlay
+                        title="Loading Inventory"
+                        subtitle="Preparing client stock data..."
+                    />
                 )}
 
                 <button
@@ -422,20 +558,19 @@ const Report = () => {
                                 : "bg-slate-900/50 text-slate-400 hover:bg-slate-800/60"
                                 }`}
                         >
-                            All ({clientStocks.length})
+                            All ({allCategorySummary.modelCount} / {allCategorySummary.totalStock})
                         </button>
-                        {categoryTabs.map((category) => {
-                            const count = clientStocks.filter((stock) => stock.model.category.name === category).length;
+                        {categorySummaries.map((summary) => {
                             return (
                                 <button
-                                    key={category}
-                                    onClick={() => setActiveCategoryTab(category)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeCategoryTab === category
+                                    key={summary.category}
+                                    onClick={() => setActiveCategoryTab(summary.category)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeCategoryTab === summary.category
                                         ? "bg-(--apl-cyan) text-white"
                                         : "bg-slate-900/50 text-slate-400 hover:bg-slate-800/60"
                                         }`}
                                 >
-                                    {category} ({count})
+                                    {summary.category} ({summary.modelCount} / {summary.totalStock})
                                 </button>
                             );
                         })}
@@ -455,48 +590,63 @@ const Report = () => {
                     </div>
 
                     {loading ? (
-                        <div className="text-center py-8 text-slate-400">Loading inventory...</div>
+                        <LoadingPanel message="Loading inventory..." showSpinner={showLoadingIndicator} />
                     ) : filteredStocks.length === 0 ? (
                         <div className="text-center py-8 text-slate-400">No inventory found for this client</div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="bg-slate-900/50">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Category</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Model</th>
-                                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Current Stock</th>
-                                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                    {filteredStocks.map((stock) => (
-                                        <tr key={stock.id} className="hover:bg-white/5 transition-colors">
-                                            <td className="px-4 py-3 text-slate-300">{stock.model.category.name}</td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-2">
-                                                    <Package className="text-purple-400" size={16} />
-                                                    <span className="text-white font-medium">{stock.model.name}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <span className="inline-flex items-center justify-center px-3 py-1 bg-(--apl-cyan)/10 text-(--apl-cyan) rounded-full text-sm font-semibold">
-                                                    {stock.currentBalance}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <button
-                                                    onClick={() => handleModelClick(stock)}
-                                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-(--apl-cyan) text-white rounded-lg hover:bg-(--apl-cyan)/80 transition-all"
-                                                >
-                                                    <Eye size={15} />
-                                                    View
-                                                </button>
-                                            </td>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between rounded-lg bg-slate-900/50 border border-white/5 px-4 py-3">
+                                <div>
+                                    <p className="text-xs uppercase tracking-wider text-slate-400">Current Filter</p>
+                                    <p className="text-sm font-semibold text-white">
+                                        {activeCategoryTab === "ALL" ? "All Categories" : activeCategoryTab}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs uppercase tracking-wider text-slate-400">Total Stock Units</p>
+                                    <p className="text-lg font-bold text-(--apl-cyan)">{filteredTotalStock}</p>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-slate-900/50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Category</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Model</th>
+                                            <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Current Stock</th>
+                                            <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Action</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5">
+                                        {filteredStocks.map((stock) => (
+                                            <tr key={stock.id} className="hover:bg-white/5 transition-colors">
+                                                <td className="px-4 py-3 text-slate-300">{stock.model.category.name}</td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Package className="text-purple-400" size={16} />
+                                                        <span className="text-white font-medium">{stock.model.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <span className="inline-flex items-center justify-center px-3 py-1 bg-(--apl-cyan)/10 text-(--apl-cyan) rounded-full text-sm font-semibold">
+                                                        {stock.currentBalance}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <button
+                                                        onClick={() => handleModelClick(stock)}
+                                                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-(--apl-cyan) text-white rounded-lg hover:bg-(--apl-cyan)/80 transition-all"
+                                                    >
+                                                        <Eye size={15} />
+                                                        View
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -507,22 +657,18 @@ const Report = () => {
     // View 3: History Details
     return (
         <div className="p-6 min-h-screen relative">
-            {/* Beautiful Loading Overlay */}
-            {refreshing && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-                    <div className="bg-slate-800/90 border border-white/10 rounded-2xl p-8 shadow-2xl">
-                        <div className="flex flex-col items-center gap-4">
-                            <div className="relative">
-                                <div className="w-16 h-16 border-4 border-slate-700 rounded-full"></div>
-                                <div className="w-16 h-16 border-4 border-(--apl-cyan) border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-                            </div>
-                            <div className="text-center">
-                                <h3 className="text-white font-semibold text-lg mb-1">Refreshing History</h3>
-                                <p className="text-slate-400 text-sm">Fetching latest data...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            {showRefreshingIndicator && (
+                <LoadingOverlay
+                    title="Refreshing History"
+                    subtitle="Fetching latest data..."
+                />
+            )}
+
+            {loading && !refreshing && showLoadingIndicator && (
+                <LoadingOverlay
+                    title="Loading History"
+                    subtitle="Preparing transaction records..."
+                />
             )}
 
             <button
@@ -568,7 +714,7 @@ const Report = () => {
 
             <div className="bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-xl p-6">
                 {loading ? (
-                    <div className="text-center py-8 text-slate-400">Loading history...</div>
+                    <LoadingPanel message="Loading history..." showSpinner={showLoadingIndicator} />
                 ) : history.length === 0 ? (
                     <div className="text-center py-8 text-slate-400">No transactions found</div>
                 ) : (
