@@ -276,76 +276,105 @@ const TransferStock = () => {
                     </div>
                 ) : (
                     <>
-                        {/* Clients Grid */}
+                        {/* Clients Table */}
                         {clients.length === 0 ? (
                             <div className="text-center py-12">
                                 <Package className="mx-auto text-slate-600 mb-4" size={48} />
                                 <p className="text-slate-400">No clients with stock found</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {clients.map((client) => (
-                                    <div
-                                        key={client.id}
-                                        className={`bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-xl p-6 transition-all ${client.stockSummary.length === 0
-                                            ? "opacity-50"
-                                            : "hover:border-[var(--apl-cyan)]/50 hover:shadow-lg hover:shadow-[var(--apl-cyan)]/10"
-                                            }`}
-                                    >
-                                        {/* Client Info */}
-                                        <div
-                                            className="mb-4 pb-4 border-b border-white/5 cursor-pointer"
-                                            onClick={() => client.stockSummary.length > 0 && handleClientSelect(client)}
-                                        >
-                                            <h3 className="text-lg font-semibold text-white mb-1">
-                                                {client.companyName}
-                                            </h3>
-                                            <p className="text-slate-400 text-xs mb-2">{client.contactName}</p>
-                                            <p className="text-slate-500 text-xs">{client.address}</p>
-                                        </div>
+                            <div className="bg-slate-800/30 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden">
+                                <div className="px-6 py-3 bg-slate-900/50 border-b border-white/5">
+                                    <p className="text-sm text-slate-400">
+                                        Showing <span className="text-[var(--apl-cyan)] font-semibold">{clients.length}</span> clients
+                                    </p>
+                                </div>
 
-                                        {/* Stock Summary Dropdown */}
-                                        <div>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setExpandedClientId(expandedClientId === client.id ? null : client.id);
-                                                }}
-                                                className="w-full flex items-center justify-between text-slate-400 text-xs uppercase tracking-wider mb-3 hover:text-[var(--apl-cyan)] transition-colors"
-                                            >
-                                                <span>Stock Inventory ({client.stockSummary.length})</span>
-                                                <ChevronDown
-                                                    size={16}
-                                                    className={`transition-transform ${expandedClientId === client.id ? "rotate-180" : ""
-                                                        }`}
-                                                />
-                                            </button>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-full">
+                                        <thead className="bg-slate-900/50">
+                                            <tr>
+                                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Company</th>
+                                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Contact</th>
+                                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Address</th>
+                                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Stock Items</th>
+                                                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
+                                            </tr>
+                                        </thead>
 
-                                            {/* Collapsible Stock List */}
-                                            {expandedClientId === client.id && (
-                                                <div className="space-y-2 max-h-32 overflow-y-auto">
-                                                    {client.stockSummary.length === 0 ? (
-                                                        <p className="text-slate-500 text-sm italic">No stock available</p>
-                                                    ) : (
-                                                        client.stockSummary.map((stock, idx) => (
-                                                            <div
-                                                                key={idx}
-                                                                className="flex items-center justify-between text-sm bg-slate-900/50 rounded-lg px-3 py-2"
-                                                            >
-                                                                <span className="text-slate-300 truncate flex-1">
-                                                                    {stock.modelName}
-                                                                </span>
-                                                                <span className="text-[var(--apl-cyan)] font-semibold ml-2">
-                                                                    {stock.quantity}
-                                                                </span>
-                                                            </div>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
+                                        <tbody className="divide-y divide-white/5">
+                                            {clients.map((client) => {
+                                                const hasStock = client.stockSummary.length > 0;
+                                                const isExpanded = expandedClientId === client.id;
+
+                                                return (
+                                                    <React.Fragment key={client.id}>
+                                                        <tr
+                                                            className={`transition-colors ${hasStock ? "hover:bg-white/5" : "opacity-50"}`}
+                                                        >
+                                                            <td className="px-6 py-4">
+                                                                <div>
+                                                                    <p className="text-white font-medium">{client.companyName}</p>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-slate-300">{client.contactName}</td>
+                                                            <td className="px-6 py-4 text-slate-400 text-sm max-w-xs truncate" title={client.address}>
+                                                                {client.address}
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <button
+                                                                    onClick={() => setExpandedClientId(isExpanded ? null : client.id)}
+                                                                    className="inline-flex items-center gap-2 text-slate-300 hover:text-[var(--apl-cyan)] transition-colors"
+                                                                >
+                                                                    <span className="text-sm">{client.stockSummary.length} items</span>
+                                                                    <ChevronDown
+                                                                        size={16}
+                                                                        className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                                                                    />
+                                                                </button>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <button
+                                                                    onClick={() => handleClientSelect(client)}
+                                                                    disabled={!hasStock}
+                                                                    className="px-4 py-2 bg-[var(--apl-cyan)]/15 text-[var(--apl-cyan)] border border-[var(--apl-cyan)]/30 rounded-lg hover:bg-[var(--apl-cyan)]/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                >
+                                                                    Select
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+
+                                                        {isExpanded && (
+                                                            <tr className="bg-slate-900/30">
+                                                                <td colSpan={5} className="px-6 py-4">
+                                                                    {client.stockSummary.length === 0 ? (
+                                                                        <p className="text-slate-500 text-sm italic">No stock available</p>
+                                                                    ) : (
+                                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                                                            {client.stockSummary.map((stock, idx) => (
+                                                                                <div
+                                                                                    key={idx}
+                                                                                    className="flex items-center justify-between text-sm bg-slate-900/60 border border-white/5 rounded-lg px-3 py-2"
+                                                                                >
+                                                                                    <span className="text-slate-300 truncate pr-2">
+                                                                                        {stock.modelName}
+                                                                                    </span>
+                                                                                    <span className="text-[var(--apl-cyan)] font-semibold whitespace-nowrap">
+                                                                                        {stock.quantity}
+                                                                                    </span>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </React.Fragment>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
                     </>
