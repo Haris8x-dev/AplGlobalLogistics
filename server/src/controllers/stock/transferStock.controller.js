@@ -9,6 +9,8 @@ export const transferStock = async (req, res) => {
             modelId,
             quantity,
             transferType,
+            jobNo,
+            movementDate,
             message: userMessage
         } = req.body;
 
@@ -17,6 +19,15 @@ export const transferStock = async (req, res) => {
 
         if (!qty || qty <= 0) {
             return res.status(400).json({ error: "Quantity must be greater than 0" });
+        }
+
+        if (!jobNo || !movementDate) {
+            return res.status(400).json({ error: "jobNo and movementDate are required" });
+        }
+
+        const parsedMovementDate = new Date(movementDate);
+        if (Number.isNaN(parsedMovementDate.getTime())) {
+            return res.status(400).json({ error: "Invalid movementDate" });
         }
 
         if (fromClientId === toClientId) {
@@ -79,6 +90,8 @@ export const transferStock = async (req, res) => {
                     quantity: -qty,
                     transferType: transferType || "TransferOut",
                     message: outMessage,
+                    jobNo,
+                    movementDate: parsedMovementDate,
                     transferGroupId,
                     fromClientId,
                     toClientId,
@@ -111,6 +124,8 @@ export const transferStock = async (req, res) => {
                     quantity: qty,
                     transferType: "TransferIn",
                     message: inMessage,
+                    jobNo,
+                    movementDate: parsedMovementDate,
                     transferGroupId,
                     fromClientId,
                     toClientId,

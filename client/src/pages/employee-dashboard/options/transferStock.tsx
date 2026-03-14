@@ -56,6 +56,8 @@ const TransferStock = () => {
         modelId: "",
         modelSearch: "",
         quantity: "",
+        jobNo: "",
+        movementDate: "",
         message: "",
     });
 
@@ -150,6 +152,8 @@ const TransferStock = () => {
             modelId: "",
             modelSearch: "",
             quantity: "",
+            jobNo: "",
+            movementDate: "",
             message: "",
         }));
         setView("transferForm");
@@ -165,6 +169,8 @@ const TransferStock = () => {
             modelId: "",
             modelSearch: "",
             quantity: "",
+            jobNo: "",
+            movementDate: "",
             message: "",
         });
         setCategories([]);
@@ -206,7 +212,7 @@ const TransferStock = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.toClientId || !formData.modelId || !formData.quantity) {
+        if (!formData.toClientId || !formData.modelId || !formData.quantity || !formData.jobNo || !formData.movementDate) {
             toast.warning("Please fill all required fields");
             return;
         }
@@ -233,6 +239,8 @@ const TransferStock = () => {
                     modelId: formData.modelId,
                     quantity: quantity,
                     transferType: "TransferOut",
+                    jobNo: formData.jobNo,
+                    movementDate: formData.movementDate,
                     message: formData.message || undefined,
                 }
             );
@@ -561,7 +569,37 @@ const TransferStock = () => {
                         )}
                     </div>
 
-                    {/* Row 5: Message - Full Width */}
+                    {/* Row 5: Job No and Date */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                Job No <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.jobNo}
+                                onChange={(e) => setFormData({ ...formData, jobNo: e.target.value })}
+                                placeholder="Enter job number"
+                                className="w-full px-4 py-4 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-[var(--apl-cyan)] transition-colors"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                Date <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                                type="date"
+                                value={formData.movementDate}
+                                onChange={(e) => setFormData({ ...formData, movementDate: e.target.value })}
+                                className="w-full px-4 py-4 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-[var(--apl-cyan)] transition-colors"
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    {/* Row 6: Message - Full Width */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
                             Transfer Note (Optional)
