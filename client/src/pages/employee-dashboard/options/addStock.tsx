@@ -37,6 +37,9 @@ const AddStock = () => {
         quantity: "",
         transferType: "IMPORT",
         message: "",
+        jobNo: "",
+        awb: "",
+        movementDate: "",
     });
 
     const [showModelSuggestions, setShowModelSuggestions] = useState(false);
@@ -140,7 +143,7 @@ const AddStock = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.clientId || !formData.modelId || !formData.quantity) {
+        if (!formData.clientId || !formData.modelId || !formData.quantity || !formData.jobNo || !formData.awb || !formData.movementDate) {
             toast.warning("Please fill all required fields");
             return;
         }
@@ -155,6 +158,9 @@ const AddStock = () => {
                     quantity: parseInt(formData.quantity),
                     transferType: formData.transferType,
                     message: formData.message || undefined,
+                    jobNo: formData.jobNo,
+                    awb: formData.awb,
+                    movementDate: formData.movementDate,
                 }
             );
 
@@ -169,6 +175,9 @@ const AddStock = () => {
                     quantity: "",
                     transferType: "IMPORT",
                     message: "",
+                    jobNo: "",
+                    awb: "",
+                    movementDate: "",
                 });
             }
         } catch (error: any) {
@@ -197,7 +206,7 @@ const AddStock = () => {
                         {/* Client Selection */}
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">
-                                Select Client <span className="text-red-400">*</span>
+                                Select Client <span className="text-green-400">*</span>
                             </label>
                             <div className="relative">
                                 <select
@@ -221,7 +230,7 @@ const AddStock = () => {
                         {/* Category Selection */}
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">
-                                Select Category <span className="text-red-400">*</span>
+                                Select Category <span className="text-green-400">*</span>
                             </label>
                             <div className="relative">
                                 <select
@@ -246,7 +255,7 @@ const AddStock = () => {
                     {/* Row 2: Model Search - Full Width */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Search Model <span className="text-red-400">*</span>
+                            Search Model <span className="text-green-400">*</span>
                         </label>
                         <div className="relative">
                             <input
@@ -304,7 +313,7 @@ const AddStock = () => {
                         {/* Quantity */}
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">
-                                Quantity <span className="text-red-400">*</span>
+                                Quantity <span className="text-green-400">*</span>
                             </label>
                             <input
                                 type="number"
@@ -320,7 +329,7 @@ const AddStock = () => {
                         {/* Transfer Type */}
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">
-                                Transfer Type <span className="text-red-400">*</span>
+                                Transfer Type <span className="text-green-400">*</span>
                             </label>
                             <div className="relative">
                                 <select
@@ -352,6 +361,53 @@ const AddStock = () => {
                             rows={3}
                             className="w-full px-4 py-4 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-(--apl-cyan) transition-colors resize-none"
                         />
+                    </div>
+
+                    {/* Row 5: Job No, AWB, and Date */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Job No */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                Job No <span className="text-green-400">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.jobNo}
+                                onChange={(e) => setFormData({ ...formData, jobNo: e.target.value })}
+                                placeholder="e.g., JOB-12345"
+                                className="w-full px-4 py-4 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-(--apl-cyan) transition-colors"
+                                required
+                            />
+                        </div>
+
+                        {/* AWB */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                AWB <span className="text-green-400">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.awb}
+                                onChange={(e) => setFormData({ ...formData, awb: e.target.value })}
+                                placeholder="Air Waybill Number"
+                                className="w-full px-4 py-4 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-(--apl-cyan) transition-colors"
+                                required
+                            />
+                        </div>
+
+                        {/* Date */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                Movement Date <span className="text-green-400">*</span>
+                            </label>
+                            <input
+                                type="date"
+                                value={formData.movementDate}
+                                onChange={(e) => setFormData({ ...formData, movementDate: e.target.value })}
+                                className="w-full px-4 py-4 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-(--apl-cyan) transition-colors"
+                                required
+                            />
+                        </div>
                     </div>
 
                     {/* Submit Button */}

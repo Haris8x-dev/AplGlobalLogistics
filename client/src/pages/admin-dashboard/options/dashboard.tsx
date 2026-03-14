@@ -5,14 +5,17 @@ import {
     ResponsiveContainer, PieChart, Pie, Cell
 } from "recharts";
 import {
-    Package, ShoppingCart, Activity, Users, RefreshCw, UserCheck
+    Package, ShoppingCart, Activity, Users, RefreshCw, UserCheck, MessageSquare, X
 } from "lucide-react";
 
 interface StockMovement {
     id: string;
     quantity: number;
     transferType: string;
-    message: string;
+    message: string | null;
+    jobNo: string;
+    awb: string;
+    movementDate: string;
     transferGroupId: string | null;
     fromClientId: string | null;
     toClientId: string | null;
@@ -40,6 +43,8 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
+    const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
+    const [showMessageModal, setShowMessageModal] = useState(false);
 
     useEffect(() => {
         fetchDashboardData();
@@ -339,8 +344,12 @@ const Dashboard = () => {
                                 <th className="text-left py-2 px-3 text-slate-400 font-medium">Model</th>
                                 <th className="text-left py-2 px-3 text-slate-400 font-medium">Client</th>
                                 <th className="text-right py-2 px-3 text-slate-400 font-medium">Qty</th>
+                                <th className="text-left py-2 px-3 text-slate-400 font-medium">Job No</th>
+                                <th className="text-left py-2 px-3 text-slate-400 font-medium">AWB</th>
+                                <th className="text-left py-2 px-3 text-slate-400 font-medium">Movement Date</th>
+                                <th className="text-left py-2 px-3 text-slate-400 font-medium">Entry Date</th>
                                 <th className="text-left py-2 px-3 text-slate-400 font-medium">By</th>
-                                <th className="text-left py-2 px-3 text-slate-400 font-medium">Date</th>
+                                <th className="text-center py-2 px-3 text-slate-400 font-medium">Message</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -349,8 +358,8 @@ const Dashboard = () => {
                                     <td className="py-2 px-3">
                                         <span
                                             className={`px-2 py-0.5 rounded-full text-xs font-medium ${movement.transferType === "INITIAL_LOAD"
-                                                ? "bg-cyan-500/10 text-cyan-400"
-                                                : "bg-purple-500/10 text-purple-400"
+                                                    ? "bg-cyan-500/10 text-cyan-400"
+                                                    : "bg-purple-500/10 text-purple-400"
                                                 }`}
                                         >
                                             {movement.transferType || "TRANSFER"}
@@ -373,9 +382,30 @@ const Dashboard = () => {
                                             {movement.quantity}
                                         </span>
                                     </td>
-                                    <td className="py-2 px-3 text-slate-400 text-xs">{movement.user.fullName}</td>
+                                    <td className="py-2 px-3 text-slate-300 text-xs">{movement.jobNo || "-"}</td>
+                                    <td className="py-2 px-3 text-slate-300 text-xs">{movement.awb || "-"}</td>
+                                    <td className="py-2 px-3 text-slate-400 text-xs">
+                                        {movement.movementDate ? new Date(movement.movementDate).toLocaleDateString() : "-"}
+                                    </td>
                                     <td className="py-2 px-3 text-slate-400 text-xs">
                                         {new Date(movement.createdAt).toLocaleDateString()}
+                                    </td>
+                                    <td className="py-2 px-3 text-slate-400 text-xs">{movement.user.fullName}</td>
+                                    <td className="py-2 px-3 text-center">
+                                        {movement.message ? (
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedMessage(movement.message);
+                                                    setShowMessageModal(true);
+                                                }}
+                                                className="inline-flex items-center justify-center p-1.5 rounded-lg bg-(--apl-cyan)/10 text-(--apl-cyan) hover:bg-(--apl-cyan)/20 transition-all"
+                                                title="View message"
+                                            >
+                                                <MessageSquare size={16} />
+                                            </button>
+                                        ) : (
+                                            <span className="text-slate-500 text-xs">-</span>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -383,6 +413,35 @@ const Dashboard = () => {
                     </table>
                 </div>
             </div>
+
+            {/* Message Modal */}
+            {showMessageModal && selectedMessage && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-slate-800/95 border border-white/10 rounded-xl p-6 max-w-md w-full shadow-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <MessageSquare size={20} className="text-(--apl-cyan)" />
+                                Message
+                            </h3>
+                            <button
+                                onClick={() => setShowMessageModal(false)}
+                                className="p-1 hover:bg-slate-700/50 rounded-lg transition-colors"
+                            >
+                                <X size={20} className="text-slate-400" />
+                            </button>
+                        </div>
+                        <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-4">
+                            <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{selectedMessage}</p>
+                        </div>
+                        <button
+                            onClick={() => setShowMessageModal(false)}
+                            className="w-full mt-4 px-4 py-2 bg-(--apl-cyan) text-white rounded-lg hover:bg-(--apl-cyan)/80 transition-all font-medium"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

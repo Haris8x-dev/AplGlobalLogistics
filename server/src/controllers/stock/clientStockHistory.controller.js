@@ -1,5 +1,91 @@
 import prisma from "../../config/db.js";
 
+const enrichMovementsWithClients = async (movements) => {
+    if (!movements.length) {
+        return [];
+    }
+
+    const groupIds = [...new Set(movements.map((m) => m.transferGroupId).filter(Boolean))];
+
+    const groupPeers = groupIds.length
+        ? await prisma.stockMovement.findMany({
+            where: {
+                transferGroupId: { in: groupIds }
+            },
+            select: {
+                transferGroupId: true,
+                quantity: true,
+                client: {
+                    select: { companyName: true }
+                }
+            }
+        })
+        : [];
+
+    const peersByGroup = groupPeers.reduce((acc, peer) => {
+        if (!peer.transferGroupId) {
+            return acc;
+        }
+        if (!acc[peer.transferGroupId]) {
+            acc[peer.transferGroupId] = [];
+        }
+        acc[peer.transferGroupId].push(peer);
+        return acc;
+    }, {});
+
+    return Promise.all(
+        movements.map(async (movement) => {
+            let fromClient = null;
+            let toClient = null;
+
+            if (movement.fromClientId) {
+                fromClient = await prisma.client.findUnique({
+                    where: { id: movement.fromClientId },
+                    select: { companyName: true }
+                });
+            }
+
+            if (movement.toClientId) {
+                toClient = await prisma.client.findUnique({
+                    where: { id: movement.toClientId },
+                    select: { companyName: true }
+                });
+            }
+
+            // Fallback for legacy/missing ids: infer counterpart client by transfer group and sign.
+            if ((!fromClient || !toClient) && movement.transferGroupId) {
+                const peers = peersByGroup[movement.transferGroupId] || [];
+
+                if (!fromClient) {
+                    if (movement.quantity > 0) {
+                        const sourcePeer = peers.find((peer) => peer.quantity < 0);
+                        fromClient = sourcePeer?.client || null;
+                    } else if (movement.quantity < 0) {
+                        const sameRowClient = peers.find((peer) => peer.quantity < 0)?.client;
+                        fromClient = sameRowClient || null;
+                    }
+                }
+
+                if (!toClient) {
+                    if (movement.quantity < 0) {
+                        const destinationPeer = peers.find((peer) => peer.quantity > 0);
+                        toClient = destinationPeer?.client || null;
+                    } else if (movement.quantity > 0) {
+                        const sameRowClient = peers.find((peer) => peer.quantity > 0)?.client;
+                        toClient = sameRowClient || null;
+                    }
+                }
+            }
+
+            return {
+                ...movement,
+                fromClient,
+                toClient
+            };
+        })
+    );
+};
+
 export const getClientStockHistory = async (req, res) => {
     try {
         const { clientId, modelId } = req.params;
@@ -13,7 +99,9 @@ export const getClientStockHistory = async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
 
-        res.status(200).json({ success: true, data: history });
+        const enrichedHistory = await enrichMovementsWithClients(history);
+
+        res.status(200).json({ success: true, data: enrichedHistory });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -45,35 +133,7 @@ export const getRecentMovements = async (req, res) => {
             }
         });
 
-        // Manually fetch fromClient and toClient names
-        const enrichedMovements = await Promise.all(
-            movements.map(async (movement) => {
-                let fromClient = null;
-                let toClient = null;
-
-                if (movement.fromClientId) {
-                    const from = await prisma.client.findUnique({
-                        where: { id: movement.fromClientId },
-                        select: { companyName: true }
-                    });
-                    fromClient = from;
-                }
-
-                if (movement.toClientId) {
-                    const to = await prisma.client.findUnique({
-                        where: { id: movement.toClientId },
-                        select: { companyName: true }
-                    });
-                    toClient = to;
-                }
-
-                return {
-                    ...movement,
-                    fromClient,
-                    toClient
-                };
-            })
-        );
+        const enrichedMovements = await enrichMovementsWithClients(movements);
 
         res.status(200).json({
             success: true,

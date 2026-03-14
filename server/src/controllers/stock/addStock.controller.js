@@ -2,9 +2,17 @@ import prisma from "../../config/db.js";
 
 export const addInitialStock = async (req, res) => {
     try {
-        const { modelId, clientId, quantity, transferType, message } = req.body;
+        const { modelId, clientId, quantity, transferType, message, jobNo, awb, movementDate } = req.body;
         const qty = parseInt(quantity);
         const activeUserId = req.user.id; // From verifyToken middleware
+
+        // Validate required fields
+        if (!modelId || !clientId || !quantity || !jobNo || !awb || !movementDate) {
+            return res.status(400).json({
+                success: false,
+                error: "Missing required fields: modelId, clientId, quantity, jobNo, awb, or movementDate"
+            });
+        }
 
         // Check if user is admin - admins cannot add stock
         if (req.user.isAdmin === true) {
@@ -20,7 +28,10 @@ export const addInitialStock = async (req, res) => {
                 data: {
                     quantity: qty,
                     transferType: transferType || "In",
-                    message, // String entry
+                    message,
+                    jobNo,
+                    awb,
+                    movementDate: new Date(movementDate),
                     modelId,
                     clientId,
                     userId: activeUserId

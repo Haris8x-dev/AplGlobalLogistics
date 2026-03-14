@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import axiosInstance from "../../../utils/axiosConfig";
-import { ArrowLeft, Search, Download, Package, TrendingUp, TrendingDown, FileSpreadsheet, Eye, RefreshCw } from "lucide-react";
+import { ArrowLeft, Search, Download, Package, TrendingUp, TrendingDown, FileSpreadsheet, Eye, RefreshCw, MessageSquare, X } from "lucide-react";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 
@@ -36,7 +36,14 @@ interface StockHistory {
     id: string;
     quantity: number;
     transferType: string;
-    message: string;
+    message: string | null;
+    jobNo?: string | null;
+    awb?: string | null;
+    movementDate?: string | null;
+    fromClientId?: string | null;
+    toClientId?: string | null;
+    fromClient?: { companyName: string } | null;
+    toClient?: { companyName: string } | null;
     createdAt: string;
     user: {
         fullName: string;
@@ -95,6 +102,8 @@ const Report = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [showLoadingIndicator, setShowLoadingIndicator] = useState(false);
     const [showRefreshingIndicator, setShowRefreshingIndicator] = useState(false);
+    const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
+    const [showMessageModal, setShowMessageModal] = useState(false);
     const loadingVisibleAtRef = useRef<number | null>(null);
     const refreshingVisibleAtRef = useRef<number | null>(null);
 
@@ -235,22 +244,52 @@ const Report = () => {
         }
     };
 
+    const getStockMovementText = (record: StockHistory) => {
+        if (record.quantity > 0) {
+            return record.fromClient?.companyName
+                ? `Received from client ${record.fromClient.companyName}`
+                : "-";
+        }
+
+        if (record.quantity < 0) {
+            return record.toClient?.companyName
+                ? `Transferred to client ${record.toClient.companyName}`
+                : "Transferred to client Unknown";
+        }
+
+        return "-";
+    };
+
     const exportToExcel = () => {
         if (history.length === 0) {
             toast.warning("No data to export");
             return;
         }
 
+        const totalCurrentQuantity = selectedModel?.currentBalance ?? 0;
+
         const data = history.map((record) => ({
             "Date": new Date(record.createdAt).toLocaleString(),
+            "Movement Date": record.movementDate ? new Date(record.movementDate).toLocaleDateString() : "-",
             "Type": record.transferType || "TRANSFER",
+            "Stock Movement": getStockMovementText(record),
             "Model": record.model.name,
             "Quantity": record.quantity,
+            "Job No": record.jobNo || "-",
+            "AWB": record.awb || "-",
             "Message": record.message || "-",
             "Performed By": record.user.fullName,
         }));
 
         const worksheet = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.sheet_add_aoa(
+            worksheet,
+            [
+                [],
+                ["Total Current Quantity", totalCurrentQuantity]
+            ],
+            { origin: -1 }
+        );
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "History");
 
@@ -687,6 +726,12 @@ const Report = () => {
                     <p className="text-slate-400 text-sm">
                         {selectedClient?.companyName} - {selectedModel?.model.name}
                     </p>
+                    <div className="mt-4 max-w-xs rounded-xl border border-(--apl-cyan)/40 bg-linear-to-r from-(--apl-cyan)/20 to-slate-900/80 px-4 py-3 shadow-[0_0_25px_rgba(34,211,238,0.25)]">
+                        <div className="flex items-center justify-between gap-4">
+                            <span className="text-[11px] uppercase tracking-[0.14em] text-slate-200/90">Total Current Quantity</span>
+                            <span className="text-2xl font-bold leading-none text-(--apl-cyan)">{selectedModel?.currentBalance ?? 0}</span>
+                        </div>
+                    </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
@@ -723,10 +768,14 @@ const Report = () => {
                             <thead>
                                 <tr className="border-b border-slate-700">
                                     <th className="text-left py-3 px-4 text-slate-400 font-medium">Entry Date & Time</th>
+                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Movement Date</th>
                                     <th className="text-left py-3 px-4 text-slate-400 font-medium">Type</th>
+                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Stock Movement</th>
                                     <th className="text-left py-3 px-4 text-slate-400 font-medium">Model</th>
                                     <th className="text-right py-3 px-4 text-slate-400 font-medium">Quantity</th>
-                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Message</th>
+                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Job No</th>
+                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">AWB</th>
+                                    <th className="text-center py-3 px-4 text-slate-400 font-medium">Message</th>
                                     <th className="text-left py-3 px-4 text-slate-400 font-medium">Performed By</th>
                                 </tr>
                             </thead>
@@ -735,6 +784,9 @@ const Report = () => {
                                     <tr key={record.id} className="border-b border-slate-700/50 hover:bg-slate-700/20">
                                         <td className="py-3 px-4 text-slate-300">
                                             {new Date(record.createdAt).toLocaleString()}
+                                        </td>
+                                        <td className="py-3 px-4 text-slate-300 text-xs">
+                                            {record.movementDate ? new Date(record.movementDate).toLocaleDateString() : "-"}
                                         </td>
                                         <td className="py-3 px-4">
                                             <span
@@ -745,6 +797,9 @@ const Report = () => {
                                             >
                                                 {record.transferType || "TRANSFER"}
                                             </span>
+                                        </td>
+                                        <td className="py-3 px-4 text-slate-300 text-xs">
+                                            {getStockMovementText(record)}
                                         </td>
                                         <td className="py-3 px-4 text-white">{record.model.name}</td>
                                         <td className="py-3 px-4 text-right">
@@ -763,8 +818,23 @@ const Report = () => {
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="py-3 px-4 text-slate-400">
-                                            {record.message || "-"}
+                                        <td className="py-3 px-4 text-slate-300 text-xs">{record.jobNo || "-"}</td>
+                                        <td className="py-3 px-4 text-slate-300 text-xs">{record.awb || "-"}</td>
+                                        <td className="py-3 px-4 text-center">
+                                            {record.message ? (
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedMessage(record.message);
+                                                        setShowMessageModal(true);
+                                                    }}
+                                                    className="inline-flex items-center justify-center p-1.5 rounded-lg bg-(--apl-cyan)/10 text-(--apl-cyan) hover:bg-(--apl-cyan)/20 transition-all"
+                                                    title="View message"
+                                                >
+                                                    <MessageSquare size={16} />
+                                                </button>
+                                            ) : (
+                                                <span className="text-slate-500 text-xs">-</span>
+                                            )}
                                         </td>
                                         <td className="py-3 px-4 text-slate-300">{record.user.fullName}</td>
                                     </tr>
@@ -774,6 +844,40 @@ const Report = () => {
                     </div>
                 )}
             </div>
+
+            {showMessageModal && selectedMessage && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-slate-800/95 border border-white/10 rounded-xl p-6 max-w-md w-full shadow-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <MessageSquare size={20} className="text-(--apl-cyan)" />
+                                Message
+                            </h3>
+                            <button
+                                onClick={() => {
+                                    setShowMessageModal(false);
+                                    setSelectedMessage(null);
+                                }}
+                                className="p-1 hover:bg-slate-700/50 rounded-lg transition-colors"
+                            >
+                                <X size={20} className="text-slate-400" />
+                            </button>
+                        </div>
+                        <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-4">
+                            <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{selectedMessage}</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setShowMessageModal(false);
+                                setSelectedMessage(null);
+                            }}
+                            className="w-full mt-4 px-4 py-2 bg-(--apl-cyan) text-white rounded-lg hover:bg-(--apl-cyan)/80 transition-all font-medium"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
