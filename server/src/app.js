@@ -37,7 +37,7 @@ app.use('/api/admin/inventory', inventoryRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/config', configRoutes);
 
-app.get('/health', (req, res) => {
+app.get('/', (req, res) => {
   res.status(200).json({ status: 'APL Core Server is Healthy' });
 });
 
