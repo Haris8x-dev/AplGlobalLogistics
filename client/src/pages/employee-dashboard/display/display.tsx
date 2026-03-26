@@ -3,6 +3,7 @@ import SidePanel from "../options/sidePanel";
 import AddStock from "../options/addStock";
 import TransferStock from "../options/transferStock";
 import LogoutModal from "../../../components/blocks/logoutModel";
+import Report from "../options/Report";
 // import Inventory from "../options/inventory";
 // import RecentActivity from "../options/recentActivity";
 
@@ -16,6 +17,8 @@ const Display = () => {
                 return <AddStock />;
             case "transferStock":
                 return <TransferStock />;
+            case "report":
+                return <Report />;
             // case "inventory":
             //     return <Inventory />;
             // case "recentActivity":

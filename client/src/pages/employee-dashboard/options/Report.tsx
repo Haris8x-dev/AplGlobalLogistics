@@ -249,15 +249,15 @@ const Report = () => {
         }
     };
 
-    const handleRevertClick = (record: StockHistory) => {
-        if (!record.transferGroupId) {
-            toast.error("Cannot revert: missing transfer group ID");
-            return;
-        }
-        setRecordToRevert(record);
-        setRevertReason("");
-        setShowRevertModal(true);
-    };
+    // const handleRevertClick = (record: StockHistory) => {
+    //     if (!record.transferGroupId) {
+    //         toast.error("Cannot revert: missing transfer group ID");
+    //         return;
+    //     }
+    //     setRecordToRevert(record);
+    //     setRevertReason("");
+    //     setShowRevertModal(true);
+    // };
 
     const handleConfirmRevert = async () => {
         if (!recordToRevert || !recordToRevert.transferGroupId) {
@@ -858,7 +858,7 @@ const Report = () => {
                                     <th className="text-left py-3 px-4 text-slate-400 font-medium">Job No</th>
                                     <th className="text-left py-3 px-4 text-slate-400 font-medium">AWB</th>
                                     <th className="text-center py-3 px-4 text-slate-400 font-medium">Message</th>
-                                    <th className="text-center py-3 px-4 text-slate-400 font-medium">Action</th>
+                                    {/* <th className="text-center py-3 px-4 text-slate-400 font-medium">Action</th> */}
                                     <th className="text-left py-3 px-4 text-slate-400 font-medium">Performed By</th>
                                 </tr>
                             </thead>
@@ -925,7 +925,7 @@ const Report = () => {
                                                 <span className="text-slate-500 text-xs">-</span>
                                             )}
                                         </td>
-                                        <td className="py-3 px-4 text-center">
+                                        {/* <td className="py-3 px-4 text-center">
                                             {record.transferType !== "REVERSAL" && record.transferGroupId ? (
                                                 isAddStockRecord(record) ? (
                                                     <button
@@ -950,7 +950,7 @@ const Report = () => {
                                             ) : (
                                                 <span className="text-slate-500 text-xs">-</span>
                                             )}
-                                        </td>
+                                        </td> */}
                                         <td className="py-3 px-4 text-slate-300">{record.user.fullName}</td>
                                     </tr>
                                 ))}

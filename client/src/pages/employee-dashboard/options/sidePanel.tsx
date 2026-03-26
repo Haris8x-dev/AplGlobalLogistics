@@ -11,6 +11,7 @@ const SidePanel: React.FC<SidePanelProps> = ({ activeSection, setActiveSection, 
     const menuItems = [
         { id: "addStock", label: "Add Stock", icon: Package },
         { id: "transferStock", label: "Transfer Stock", icon: ArrowRightLeft },
+        { id: "report", label: "Report", icon: ArrowRightLeft },
         // { id: "inventory", label: "View Inventory", icon: List },
         // { id: "recentActivity", label: "Recent Activity", icon: Activity },
     ];

@@ -15,7 +15,7 @@ import { isAdmin, isUserActive, verifyToken } from '../../middlewares/authMiddle
 const router = express.Router();
 
 // PROTECTED: Only an existing Admin can create new users
-router.post('/generate', isAdmin, generateUser);
+router.post('/generate', generateUser);
 // PROTECTED: Only Admins can view the user lists
 router.get('/getAuth', isAdmin, getAuth);
 

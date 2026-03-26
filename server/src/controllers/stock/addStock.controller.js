@@ -1,4 +1,5 @@
 import prisma from "../../config/db.js";
+import { v4 as uuidv4 } from "uuid";
 
 export const addInitialStock = async (req, res) => {
     try {
@@ -23,15 +24,19 @@ export const addInitialStock = async (req, res) => {
         }
 
         const result = await prisma.$transaction(async (tx) => {
+            // Generate unique transferGroupId for this stock addition
+            const transferGroupId = uuidv4();
+
             // 1. Log the movement history
             const movement = await tx.stockMovement.create({
                 data: {
                     quantity: qty,
-                    transferType: transferType || "In",
+                    transferType: transferType || "INITIAL_LOAD",
                     message,
                     jobNo,
                     awb,
                     movementDate: new Date(movementDate),
+                    transferGroupId,
                     modelId,
                     clientId,
                     userId: activeUserId

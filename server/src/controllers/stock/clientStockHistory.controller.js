@@ -1,4 +1,5 @@
 import prisma from "../../config/db.js";
+import { v4 as uuidv4 } from "uuid";
 
 const enrichMovementsWithClients = async (movements) => {
     if (!movements.length) {
@@ -101,7 +102,13 @@ export const getClientStockHistory = async (req, res) => {
 
         const enrichedHistory = await enrichMovementsWithClients(history);
 
-        res.status(200).json({ success: true, data: enrichedHistory });
+        // Backfill transferGroupId for old entries that don't have it
+        const historyWithGroupIds = enrichedHistory.map((record) => ({
+            ...record,
+            transferGroupId: record.transferGroupId || record.id  // Fallback to record ID for old entries
+        }));
+
+        res.status(200).json({ success: true, data: historyWithGroupIds });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

@@ -89,7 +89,7 @@ model StockMovement {
   transferType    String?
   message         String?
   jobNo           String    // Job number (alphanumeric)
-  awb             String    // Air Waybill number
+  awb             String?    // Air Waybill number
   movementDate    DateTime  // Date entered by user
 
   transferGroupId String?   // 🔥 links both sides of transfer
