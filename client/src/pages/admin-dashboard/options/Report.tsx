@@ -131,6 +131,10 @@ const Report = () => {
     const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
     const [showMessageModal, setShowMessageModal] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const [exportProgress, setExportProgress] = useState(0);
+    const [exportFetchedRows, setExportFetchedRows] = useState(0);
+    const [exportCurrentPage, setExportCurrentPage] = useState(0);
+    const [exportTotalPages, setExportTotalPages] = useState(0);
     const [historyPage, setHistoryPage] = useState(1);
     const [historyPageSize] = useState(50);
     const [historyTotalPages, setHistoryTotalPages] = useState(0);
@@ -476,6 +480,10 @@ const Report = () => {
         const totalCurrentQuantity = selectedModel.currentBalance ?? 0;
 
         try {
+            setExportProgress(0);
+            setExportFetchedRows(0);
+            setExportCurrentPage(0);
+            setExportTotalPages(0);
             setExporting(true);
 
             const allHistory: StockHistory[] = [];
@@ -510,6 +518,15 @@ const Report = () => {
                 allHistory.push(...pageData);
 
                 totalPages = response.data.pagination?.totalPages || 0;
+
+                setExportFetchedRows(allHistory.length);
+                setExportCurrentPage(page);
+                setExportTotalPages(totalPages);
+
+                if (totalPages > 0) {
+                    setExportProgress(Math.round((page / totalPages) * 100));
+                }
+
                 if (totalPages === 0) {
                     break;
                 }
@@ -521,6 +538,12 @@ const Report = () => {
                 toast.warning("No data to export");
                 return;
             }
+
+            // Force progress to 100% just before building Excel
+            setExportProgress(100);
+
+            // Yield to browser to paint the 100% progress before the synchronous block
+            await new Promise(resolve => setTimeout(resolve, 50));
 
             const exportRevertedGroupIds = buildRevertedGroupIds(allHistory);
             const data = allHistory
@@ -561,6 +584,7 @@ const Report = () => {
             XLSX.utils.book_append_sheet(workbook, worksheet, "History");
 
             XLSX.writeFile(workbook, `${selectedClient.companyName}_${selectedModel.model.name}_history.xlsx`);
+            setExportProgress(100);
             toast.success(`Report exported successfully (${data.length} rows)`);
         } catch (error) {
             console.error("Error exporting report:", error);
@@ -984,6 +1008,28 @@ const Report = () => {
                     title="Loading History"
                     subtitle="Preparing transaction records..."
                 />
+            )}
+
+            {exporting && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm bg-slate-800/95 border border-white/10 rounded-xl p-6 shadow-2xl">
+                        <h3 className="text-white font-semibold text-lg mb-3">Exporting Report...</h3>
+                        <div className="w-full bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                            <div
+                                className="h-2.5 bg-(--apl-cyan) transition-all duration-300"
+                                style={{ width: `${exportProgress}%` }}
+                            />
+                        </div>
+                        <p className="text-slate-300 text-sm mt-3">
+                            {exportFetchedRows} rows fetched ({exportProgress}%)
+                        </p>
+                        <p className="text-slate-400 text-xs mt-1">
+                            {exportTotalPages > 0
+                                ? `Page ${Math.min(exportCurrentPage, exportTotalPages)} of ${exportTotalPages}`
+                                : "Preparing export..."}
+                        </p>
+                    </div>
+                </div>
             )}
 
             <button
