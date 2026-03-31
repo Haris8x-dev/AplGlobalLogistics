@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 export const addInitialStock = async (req, res) => {
     try {
         const { modelId, clientId, quantity, transferType, message, jobNo, awb, movementDate } = req.body;
-        const qty = parseInt(quantity);
+        const qty = Number.parseInt(String(quantity), 10);
         const activeUserId = req.user.id; // From verifyToken middleware
 
         // Validate required fields
@@ -15,8 +15,23 @@ export const addInitialStock = async (req, res) => {
             });
         }
 
+        if (!Number.isInteger(qty) || qty <= 0) {
+            return res.status(400).json({
+                success: false,
+                error: "Quantity must be a positive integer"
+            });
+        }
+
+        const parsedMovementDate = new Date(movementDate);
+        if (Number.isNaN(parsedMovementDate.getTime())) {
+            return res.status(400).json({
+                success: false,
+                error: "Invalid movementDate"
+            });
+        }
+
         // Check if user is admin - admins cannot add stock
-        if (req.user.isAdmin === true) {
+        if (req.user.role === "ADMIN") {
             return res.status(403).json({
                 success: false,
                 error: "Admins are not allowed to add stock. Only employees can perform this action."
@@ -27,7 +42,7 @@ export const addInitialStock = async (req, res) => {
             // Generate unique transferGroupId for this stock addition
             const transferGroupId = uuidv4();
 
-            // 1. Log the movement history
+            // 1. Log the movement history as PENDING
             const movement = await tx.stockMovement.create({
                 data: {
                     quantity: qty,
@@ -35,7 +50,8 @@ export const addInitialStock = async (req, res) => {
                     message,
                     jobNo,
                     awb,
-                    movementDate: new Date(movementDate),
+                    movementDate: parsedMovementDate,
+                    status: "PENDING", // <--- Save as pending
                     transferGroupId,
                     modelId,
                     clientId,
@@ -43,28 +59,27 @@ export const addInitialStock = async (req, res) => {
                 }
             });
 
-            // 2. Initialize or Update the Master Balance
-            const stock = await tx.clientStock.upsert({
-                where: { clientId_modelId: { clientId, modelId } },
-                update: {
-                    currentBalance: { increment: qty },
-                    lastMessage: message,
-                    lastUpdatedBy: activeUserId
+            // 2. Ensure ClientStock exists so the model appears in UI for the admin to approve.
+            // We DO NOT update currentBalance; we just make sure a row exists.
+            await tx.clientStock.upsert({
+                where: {
+                    clientId_modelId: { clientId, modelId }
                 },
+                update: {}, // No change to balance here
                 create: {
-                    clientId,
-                    modelId,
-                    currentBalance: qty,
-                    lastMessage: message,
-                    lastUpdatedBy: activeUserId
+                    client: { connect: { id: clientId } },
+                    model: { connect: { id: modelId } },
+                    currentBalance: 0, // Starts at 0, only increases on Proceed
+                    user: { connect: { id: activeUserId } }
                 }
             });
 
-            return { movement, stock };
+            return { movement };
         });
 
         res.status(201).json({ success: true, data: result });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error("Error adding initial stock:", error);
+        res.status(500).json({ success: false, error: "Failed to add stock" });
     }
 };

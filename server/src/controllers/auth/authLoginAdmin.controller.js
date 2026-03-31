@@ -48,21 +48,13 @@ export const loginAdmin = async (req, res) => {
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: false,
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 24 * 60 * 60 * 1000
         });
 
         // 7. ELECTRON SUPPORT: If request is from Electron, also send token in response body
         const isElectronClient = req.headers['x-client-type'] === 'electron';
-
-        // DEBUG: Log the header detection
-        console.log('🔍 [Backend Admin Login] Headers:', {
-            'x-client-type': req.headers['x-client-type'],
-            'user-agent': req.headers['user-agent']
-        });
-        console.log('🔍 [Backend Admin Login] Detected Electron:', isElectronClient);
-        console.log('🔍 [Backend Admin Login] Sending token in response:', isElectronClient);
 
         res.status(200).json({
             message: "Success",

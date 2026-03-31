@@ -42,6 +42,9 @@ model Client {
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([createdAt], map: "idx_client_created_at")
+  @@index([isActive], map: "idx_client_is_active")
 }
 
 
@@ -51,6 +54,8 @@ model Category {
   isActive  Boolean  @default(true)
   models    MobileModel[] // Relation link
   createdAt DateTime @default(now())
+
+  @@index([isActive, name], map: "idx_category_active_name")
 }
 
 
@@ -63,6 +68,8 @@ model MobileModel {
   stockMovements StockMovement[]
   clientStocks   ClientStock[]
   createdAt      DateTime        @default(now())
+
+  @@index([categoryId, name], map: "idx_mobile_model_category_name")
 }
 
 model ClientStock {
@@ -81,6 +88,14 @@ model ClientStock {
   updatedAt      DateTime    @updatedAt
 
   @@unique([clientId, modelId])
+  @@index([clientId, currentBalance], map: "idx_client_stock_client_balance")
+  @@index([modelId], map: "idx_client_stock_model")
+}
+
+enum MovementStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
 }
 
 model StockMovement {
@@ -88,9 +103,11 @@ model StockMovement {
   quantity        Int
   transferType    String?
   message         String?
-  jobNo           String    // Job number (alphanumeric)
+  jobNo           String?    // Job number (alphanumeric)
   awb             String?    // Air Waybill number
-  movementDate    DateTime  // Date entered by user
+  movementDate    DateTime?  // Date entered by user
+
+  status          MovementStatus @default(COMPLETED) // 🚀 Track transfer status
 
   transferGroupId String?   // 🔥 links both sides of transfer
   fromClientId    String?   // 🔥 structured tracking
@@ -106,6 +123,10 @@ model StockMovement {
   user            User        @relation(fields: [userId], references: [id])
 
   createdAt       DateTime @default(now())
+
+  @@index([transferGroupId], map: "idx_stock_movement_transfer_group")
+  @@index([clientId, modelId, createdAt], map: "idx_stock_movement_client_model_created")
+  @@index([status, createdAt], map: "idx_stock_movement_status_created")
 }
 
 model AppConfig {

@@ -22,6 +22,9 @@ interface StockMovement {
     fromClient: { companyName: string } | null;
     toClient: { companyName: string } | null;
     createdAt: string;
+    status: string;
+    clientId: string;
+    modelId: string;
     user: { fullName: string };
     model: { name: string };
     client: { companyName: string };
@@ -148,6 +151,16 @@ const Dashboard = () => {
             console.error("Error refreshing movements:", error);
         } finally {
             setRefreshing(false);
+        }
+    };
+
+    const handlePendingClick = (movement: StockMovement) => {
+        if (movement.status === "PENDING") {
+            sessionStorage.setItem("pendingReportAction", JSON.stringify({
+                clientId: movement.clientId,
+                modelId: movement.modelId
+            }));
+            window.dispatchEvent(new CustomEvent("navigateToReport"));
         }
     };
 
@@ -353,62 +366,76 @@ const Dashboard = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {recentMovements.slice(0, 15).map((movement) => (
-                                <tr key={movement.id} className="border-b border-slate-700/50 hover:bg-slate-700/20">
-                                    <td className="py-2 px-3">
-                                        <span
-                                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${movement.transferType === "INITIAL_LOAD"
-                                                    ? "bg-cyan-500/10 text-cyan-400"
-                                                    : "bg-purple-500/10 text-purple-400"
-                                                }`}
-                                        >
-                                            {movement.transferType || "TRANSFER"}
-                                        </span>
-                                    </td>
-                                    <td className="py-2 px-3 text-slate-300 text-xs">
-                                        {movement.fromClient ? movement.fromClient.companyName : "-"}
-                                    </td>
-                                    <td className="py-2 px-3 text-slate-300 text-xs">
-                                        {movement.toClient ? movement.toClient.companyName : "-"}
-                                    </td>
-                                    <td className="py-2 px-3 text-white">{movement.model.name}</td>
-                                    <td className="py-2 px-3 text-slate-300">{movement.client.companyName}</td>
-                                    <td className="py-2 px-3 text-right">
-                                        <span
-                                            className={`font-semibold ${movement.quantity > 0 ? "text-green-400" : "text-red-400"
-                                                }`}
-                                        >
-                                            {movement.quantity > 0 ? "+" : ""}
-                                            {movement.quantity}
-                                        </span>
-                                    </td>
-                                    <td className="py-2 px-3 text-slate-300 text-xs">{movement.jobNo || "-"}</td>
-                                    <td className="py-2 px-3 text-slate-300 text-xs">{movement.awb || "-"}</td>
-                                    <td className="py-2 px-3 text-slate-400 text-xs">
-                                        {movement.movementDate ? new Date(movement.movementDate).toLocaleDateString() : "-"}
-                                    </td>
-                                    <td className="py-2 px-3 text-slate-400 text-xs">
-                                        {new Date(movement.createdAt).toLocaleDateString()}
-                                    </td>
-                                    <td className="py-2 px-3 text-slate-400 text-xs">{movement.user.fullName}</td>
-                                    <td className="py-2 px-3 text-center">
-                                        {movement.message ? (
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedMessage(movement.message);
-                                                    setShowMessageModal(true);
-                                                }}
-                                                className="inline-flex items-center justify-center p-1.5 rounded-lg bg-(--apl-cyan)/10 text-(--apl-cyan) hover:bg-(--apl-cyan)/20 transition-all"
-                                                title="View message"
+                            {recentMovements.slice(0, 15).map((movement) => {
+                                const isPending = movement.status === "PENDING";
+                                return (
+                                    <tr
+                                        key={movement.id}
+                                        className={`border-b border-slate-700/50 transition-colors ${isPending ? 'bg-yellow-500/10 hover:bg-yellow-500/20 cursor-pointer' : 'hover:bg-slate-700/20'}`}
+                                        onClick={() => isPending ? handlePendingClick(movement) : undefined}
+                                    >
+                                        <td className="py-2 px-3">
+                                            <div className="flex items-center gap-2">
+                                                {isPending && (
+                                                    <div className="w-2 h-2 rounded-full bg-yellow-400 relative" title="Pending Approval">
+                                                        <div className="absolute inset-0 rounded-full bg-yellow-400 animate-ping"></div>
+                                                    </div>
+                                                )}
+                                                <span
+                                                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${movement.transferType === "INITIAL_LOAD"
+                                                        ? "bg-cyan-500/10 text-cyan-400"
+                                                        : "bg-purple-500/10 text-purple-400"
+                                                        }`}
+                                                >
+                                                    {movement.transferType || "TRANSFER"}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="py-2 px-3 text-slate-300 text-xs">
+                                            {movement.fromClient ? movement.fromClient.companyName : "-"}
+                                        </td>
+                                        <td className="py-2 px-3 text-slate-300 text-xs">
+                                            {movement.toClient ? movement.toClient.companyName : "-"}
+                                        </td>
+                                        <td className="py-2 px-3 text-white">{movement.model.name}</td>
+                                        <td className="py-2 px-3 text-slate-300">{movement.client.companyName}</td>
+                                        <td className="py-2 px-3 text-right">
+                                            <span
+                                                className={`font-semibold ${movement.quantity > 0 ? "text-green-400" : "text-red-400"
+                                                    }`}
                                             >
-                                                <MessageSquare size={16} />
-                                            </button>
-                                        ) : (
-                                            <span className="text-slate-500 text-xs">-</span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
+                                                {movement.quantity > 0 ? "+" : ""}
+                                                {movement.quantity}
+                                            </span>
+                                        </td>
+                                        <td className="py-2 px-3 text-slate-300 text-xs">{movement.jobNo || "-"}</td>
+                                        <td className="py-2 px-3 text-slate-300 text-xs">{movement.awb || "-"}</td>
+                                        <td className="py-2 px-3 text-slate-400 text-xs">
+                                            {movement.movementDate ? new Date(movement.movementDate).toLocaleDateString() : "-"}
+                                        </td>
+                                        <td className="py-2 px-3 text-slate-400 text-xs">
+                                            {new Date(movement.createdAt).toLocaleDateString()}
+                                        </td>
+                                        <td className="py-2 px-3 text-slate-400 text-xs">{movement.user.fullName}</td>
+                                        <td className="py-2 px-3 text-center">
+                                            {movement.message ? (
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedMessage(movement.message);
+                                                        setShowMessageModal(true);
+                                                    }}
+                                                    className="inline-flex items-center justify-center p-1.5 rounded-lg bg-(--apl-cyan)/10 text-(--apl-cyan) hover:bg-(--apl-cyan)/20 transition-all"
+                                                    title="View message"
+                                                >
+                                                    <MessageSquare size={16} />
+                                                </button>
+                                            ) : (
+                                                <span className="text-slate-500 text-xs">-</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

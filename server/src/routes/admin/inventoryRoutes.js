@@ -32,7 +32,7 @@ router.get('/category/:categoryId/models', getModelsByCategory);
 
 
 // 2. Mobile Model Routes
-router.post('/model', addMobileModel);
+router.post('/model', isAdmin, addMobileModel);
 router.get('/models', getAllMobileModels);
 router.patch('/model/:id', isAdmin, isUserActive, updateMobileModel);
 router.patch('/model/status/:id', isAdmin, isUserActive, toggleMobileModelStatus);

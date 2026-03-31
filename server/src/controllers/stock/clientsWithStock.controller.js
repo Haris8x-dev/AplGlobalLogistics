@@ -1,11 +1,32 @@
 import prisma from "../../config/db.js";
 
+const parsePositiveInt = (value, fallback) => {
+    const parsed = Number.parseInt(String(value), 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const DEFAULT_PAGE_SIZE = 200;
+const MAX_PAGE_SIZE = 500;
+
 export const getClientsWithStock = async (req, res) => {
     try {
+        const page = parsePositiveInt(req.query.page, 1);
+        const pageSize = Math.min(parsePositiveInt(req.query.pageSize, DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
+
+        const totalCount = await prisma.client.count({
+            where: { isActive: true }
+        });
+
+        const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / pageSize);
+        const currentPage = totalPages > 0 ? Math.min(page, totalPages) : 1;
+        const skip = (currentPage - 1) * pageSize;
+
         const clients = await prisma.client.findMany({
             where: {
                 isActive: true
             },
+            skip,
+            take: pageSize,
             include: {
                 clientStocks: {
                     where: {
@@ -38,7 +59,7 @@ export const getClientsWithStock = async (req, res) => {
             contactName: client.contactName,
             address: client.address,
             email: client.email,
-            phone: client.phone,
+            phone: client.phoneNumber,
             isActive: client.isActive,
             stockSummary: client.clientStocks.map(stock => ({
                 modelId: stock.model.id,
@@ -51,7 +72,15 @@ export const getClientsWithStock = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            clients: formattedClients
+            clients: formattedClients,
+            pagination: {
+                page: currentPage,
+                pageSize,
+                totalCount,
+                totalPages,
+                hasPreviousPage: currentPage > 1,
+                hasNextPage: currentPage < totalPages,
+            }
         });
     } catch (error) {
         console.error("Error fetching clients with stock:", error);

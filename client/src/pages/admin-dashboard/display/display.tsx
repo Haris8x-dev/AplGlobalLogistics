@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SidePanel from "../options/sidePanel";
 import Dashboard from "../options/dashboard";
 import ManageClients from "../options/manageClients";
@@ -14,6 +14,14 @@ import LogoutModal from "../../../components/blocks/logoutModel";
 const Display = () => {
     const [activeSection, setActiveSection] = useState("dashboard");
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+    useEffect(() => {
+        const handleNavigation = () => {
+            setActiveSection("report");
+        };
+        window.addEventListener("navigateToReport", handleNavigation);
+        return () => window.removeEventListener("navigateToReport", handleNavigation);
+    }, []);
 
     const renderSection = () => {
         switch (activeSection) {

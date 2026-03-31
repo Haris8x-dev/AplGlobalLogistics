@@ -58,8 +58,7 @@ export const createPassword = async (req, res) => {
         console.error("❌ Error creating entry password:", error);
         return res.status(500).json({
             success: false,
-            message: "Internal server error",
-            error: error.message
+            message: "Internal server error"
         });
     }
 };
@@ -130,8 +129,7 @@ export const updatePassword = async (req, res) => {
         console.error("❌ Error updating entry password:", error);
         return res.status(500).json({
             success: false,
-            message: "Internal server error",
-            error: error.message
+            message: "Internal server error"
         });
     }
 };
@@ -150,8 +148,7 @@ export const validatePassword = async (req, res) => {
         console.error("❌ Error validating entry password:", error);
         return res.status(500).json({
             success: false,
-            message: "Internal server error",
-            error: error.message
+            message: "Internal server error"
         });
     }
 };

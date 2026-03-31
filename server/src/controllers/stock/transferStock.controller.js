@@ -1,6 +1,13 @@
 import prisma from "../../config/db.js";
 import { v4 as uuidv4 } from "uuid";
 
+class HttpError extends Error {
+    constructor(statusCode, message) {
+        super(message);
+        this.statusCode = statusCode;
+    }
+}
+
 export const transferStock = async (req, res) => {
     try {
         const {
@@ -14,24 +21,32 @@ export const transferStock = async (req, res) => {
             message: userMessage
         } = req.body;
 
-        const qty = parseInt(quantity);
+        if (req.user.role === "ADMIN") {
+            throw new HttpError(403, "Admins are not allowed to create transfer requests");
+        }
+
+        if (!fromClientId || !toClientId || !modelId || quantity === undefined || quantity === null || quantity === "") {
+            throw new HttpError(400, "fromClientId, toClientId, modelId and quantity are required");
+        }
+
+        const qty = Number.parseInt(String(quantity), 10);
         const activeUserId = req.user.id;
 
-        if (!qty || qty <= 0) {
-            return res.status(400).json({ error: "Quantity must be greater than 0" });
+        if (!Number.isInteger(qty) || qty <= 0) {
+            throw new HttpError(400, "Quantity must be a positive integer");
         }
 
         if (!jobNo || !movementDate) {
-            return res.status(400).json({ error: "jobNo and movementDate are required" });
+            throw new HttpError(400, "jobNo and movementDate are required");
         }
 
         const parsedMovementDate = new Date(movementDate);
         if (Number.isNaN(parsedMovementDate.getTime())) {
-            return res.status(400).json({ error: "Invalid movementDate" });
+            throw new HttpError(400, "Invalid movementDate");
         }
 
         if (fromClientId === toClientId) {
-            return res.status(400).json({ error: "Cannot transfer to same client" });
+            throw new HttpError(400, "Cannot transfer to same client");
         }
 
         await prisma.$transaction(async (tx) => {
@@ -51,7 +66,7 @@ export const transferStock = async (req, res) => {
             ]);
 
             if (!fromClient || !toClient) {
-                throw new Error("Invalid client(s)");
+                throw new HttpError(400, "Invalid client(s)");
             }
 
             // 2️⃣ Check if model exists for source client
@@ -66,12 +81,12 @@ export const transferStock = async (req, res) => {
 
             // 🔥 NEW: Model missing check
             if (!sourceStock) {
-                throw new Error(`Model missing for ${fromClient.companyName}`);
+                throw new HttpError(400, `Model missing for ${fromClient.companyName}`);
             }
 
             // 🔥 NEW: Quantity check separated
             if (sourceStock.currentBalance < qty) {
-                throw new Error(
+                throw new HttpError(400,
                     `Insufficient stock at ${fromClient.companyName}`
                 );
             }
@@ -82,7 +97,7 @@ export const transferStock = async (req, res) => {
             const inMessage = `Received ${qty} from ${fromClient.companyName}${userMessage ? " | " + userMessage : ""}`;
 
             // ==========================
-            // 🔴 DEDUCT FROM SOURCE
+            // 🔴 DEDUCT FROM SOURCE (PENDING)
             // ==========================
 
             await tx.stockMovement.create({
@@ -91,6 +106,7 @@ export const transferStock = async (req, res) => {
                     transferType: transferType || "TransferOut",
                     message: outMessage,
                     jobNo,
+                    status: "PENDING",    // 👈 NEW
                     movementDate: parsedMovementDate,
                     transferGroupId,
                     fromClientId,
@@ -101,22 +117,10 @@ export const transferStock = async (req, res) => {
                 }
             });
 
-            await tx.clientStock.update({
-                where: {
-                    clientId_modelId: {
-                        clientId: fromClientId,
-                        modelId
-                    }
-                },
-                data: {
-                    currentBalance: { decrement: qty },
-                    lastMessage: outMessage,
-                    lastUpdatedBy: activeUserId
-                }
-            });
+            // ❌ REMOVED ClientStock update (will run on proceed)
 
             // ==========================
-            // 🟢 ADD TO DESTINATION
+            // 🟢 ADD TO DESTINATION (PENDING)
             // ==========================
 
             await tx.stockMovement.create({
@@ -125,6 +129,7 @@ export const transferStock = async (req, res) => {
                     transferType: "TransferIn",
                     message: inMessage,
                     jobNo,
+                    status: "PENDING",    // 👈 NEW
                     movementDate: parsedMovementDate,
                     transferGroupId,
                     fromClientId,
@@ -135,38 +140,27 @@ export const transferStock = async (req, res) => {
                 }
             });
 
-            await tx.clientStock.upsert({
-                where: {
-                    clientId_modelId: {
-                        clientId: toClientId,
-                        modelId
-                    }
-                },
-                update: {
-                    currentBalance: { increment: qty },
-                    lastMessage: inMessage,
-                    lastUpdatedBy: activeUserId
-                },
-                create: {
-                    clientId: toClientId,
-                    modelId,
-                    currentBalance: qty,
-                    lastMessage: inMessage,
-                    lastUpdatedBy: activeUserId
-                }
-            });
+            // ❌ REMOVED ClientStock upsert (will run on proceed)
 
         });
 
         return res.status(200).json({
             success: true,
-            message: "Transfer completed successfully"
+            message: "Transfer placed ON HOLD (Pending approval)"
         });
 
     } catch (error) {
-        return res.status(400).json({
+        if (error instanceof HttpError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                error: error.message,
+            });
+        }
+
+        console.error("Transfer request error:", error);
+        return res.status(500).json({
             success: false,
-            error: error.message
+            error: "Failed to create transfer request",
         });
     }
 };

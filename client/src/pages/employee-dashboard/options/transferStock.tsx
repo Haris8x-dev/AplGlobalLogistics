@@ -109,6 +109,7 @@ const TransferStock = () => {
         // Reset model selection when category changes
         setFormData((prev) => ({ ...prev, modelId: "", modelSearch: "", quantity: "" }));
         setAvailableQuantity(0);
+        setShowModelSuggestions(false);
     }, [formData.categoryId, categories]);
 
     // Filter models based on search input
@@ -121,7 +122,6 @@ const TransferStock = () => {
             setShowModelSuggestions(true);
         } else {
             setFilteredModels(models);
-            setShowModelSuggestions(false);
         }
     }, [formData.modelSearch, models]);
 
@@ -491,6 +491,7 @@ const TransferStock = () => {
                                 value={formData.modelSearch}
                                 onChange={(e) => handleModelSearchChange(e.target.value)}
                                 onFocus={() => setShowModelSuggestions(true)}
+                                onClick={() => setShowModelSuggestions(true)}
                                 placeholder={
                                     formData.categoryId ? "Type to search models..." : "Select category first"
                                 }
@@ -512,7 +513,7 @@ const TransferStock = () => {
                             {/* Suggestions Dropdown */}
                             {showModelSuggestions &&
                                 filteredModels.length > 0 &&
-                                formData.modelSearch &&
+                                formData.categoryId &&
                                 !formData.modelId && (
                                     <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
                                         {filteredModels.map((model) => (
@@ -534,10 +535,11 @@ const TransferStock = () => {
                             {/* No Results Message */}
                             {showModelSuggestions &&
                                 filteredModels.length === 0 &&
-                                formData.modelSearch &&
                                 formData.categoryId && (
                                     <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-4 text-center text-slate-400 text-sm">
-                                        No models found matching "{formData.modelSearch}"
+                                        {formData.modelSearch
+                                            ? `No models found matching "${formData.modelSearch}"`
+                                            : "No models found in this category"}
                                     </div>
                                 )}
                         </div>

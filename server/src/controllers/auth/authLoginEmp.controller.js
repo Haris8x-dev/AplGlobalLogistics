@@ -38,7 +38,7 @@ export const loginEmployee = async (req, res) => {
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: false,
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 24 * 60 * 60 * 1000
         });
@@ -47,12 +47,12 @@ export const loginEmployee = async (req, res) => {
         const isElectronClient = req.headers['x-client-type'] === 'electron';
 
         // DEBUG: Log the header detection
-        console.log('🔍 [Backend Employee Login] Headers:', {
-            'x-client-type': req.headers['x-client-type'],
-            'user-agent': req.headers['user-agent']
-        });
-        console.log('🔍 [Backend Employee Login] Detected Electron:', isElectronClient);
-        console.log('🔍 [Backend Employee Login] Sending token in response:', isElectronClient);
+        // console.log('🔍 [Backend Employee Login] Headers:', {
+        //     'x-client-type': req.headers['x-client-type'],
+        //     'user-agent': req.headers['user-agent']
+        // });
+        // console.log('🔍 [Backend Employee Login] Detected Electron:', isElectronClient);
+        // console.log('🔍 [Backend Employee Login] Sending token in response:', isElectronClient);
 
         res.status(200).json({
             message: "Success",

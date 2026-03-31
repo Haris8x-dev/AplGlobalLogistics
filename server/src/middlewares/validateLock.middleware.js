@@ -43,8 +43,7 @@ export const validateLock = async (req, res, next) => {
         console.error("❌ Error validating lock password:", error);
         return res.status(500).json({
             success: false,
-            message: "Internal server error",
-            error: error.message
+            message: "Internal server error"
         });
     }
 };

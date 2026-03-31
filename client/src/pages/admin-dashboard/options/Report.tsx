@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import axiosInstance from "../../../utils/axiosConfig";
-import { ArrowLeft, Search, Download, Package, TrendingUp, TrendingDown, FileSpreadsheet, Eye, RefreshCw, MessageSquare, X, Undo2, Trash2 } from "lucide-react";
+import { ArrowLeft, Search, Download, Package, TrendingUp, TrendingDown, FileSpreadsheet, Eye, RefreshCw, MessageSquare, X, CheckCircle, Edit, Ban } from "lucide-react";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 
@@ -46,6 +46,7 @@ interface StockHistory {
     toClient?: { companyName: string } | null;
     createdAt: string;
     transferGroupId?: string | null;
+    status: "PENDING" | "COMPLETED" | "CANCELLED";
     user: {
         fullName: string;
     };
@@ -53,6 +54,30 @@ interface StockHistory {
         name: string;
     };
 }
+
+type HistoryStatusFilter = "ALL" | "PENDING" | "COMPLETED" | "CANCELLED";
+
+interface HistoryPagination {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+}
+
+const buildRevertedGroupIds = (records: StockHistory[]) => {
+    const ids = new Set<string>();
+
+    records.forEach((record) => {
+        if (record.transferType === "REVERSAL" && record.message) {
+            const match = record.message.match(/\[REVERSAL_OF_GROUP:([^\]]+)\]/);
+            if (match?.[1]) {
+                ids.add(match[1]);
+            }
+        }
+    });
+
+    return ids;
+};
 
 const LoadingOverlay = ({ title, subtitle }: { title: string; subtitle: string }) => (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -105,10 +130,20 @@ const Report = () => {
     const [showRefreshingIndicator, setShowRefreshingIndicator] = useState(false);
     const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
     const [showMessageModal, setShowMessageModal] = useState(false);
-    const [showRevertModal, setShowRevertModal] = useState(false);
-    const [revertReason, setRevertReason] = useState("");
-    const [recordToRevert, setRecordToRevert] = useState<StockHistory | null>(null);
-    const [revertingGroupId, setRevertingGroupId] = useState<string | null>(null);
+    const [exporting, setExporting] = useState(false);
+    const [historyPage, setHistoryPage] = useState(1);
+    const [historyPageSize] = useState(50);
+    const [historyTotalPages, setHistoryTotalPages] = useState(0);
+    const [historyTotalCount, setHistoryTotalCount] = useState(0);
+    const [historyStatusFilter, setHistoryStatusFilter] = useState<HistoryStatusFilter>("ALL");
+    const [historyFromDate, setHistoryFromDate] = useState("");
+    const [historyToDate, setHistoryToDate] = useState("");
+
+    // Pending Transfer states
+    const [actioningGroupId, setActioningGroupId] = useState<string | null>(null);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [recordToEdit, setRecordToEdit] = useState<StockHistory | null>(null);
+    const [editFormData, setEditFormData] = useState({ quantity: "", awb: "", jobNo: "" });
     const loadingVisibleAtRef = useRef<number | null>(null);
     const refreshingVisibleAtRef = useRef<number | null>(null);
 
@@ -170,10 +205,6 @@ const Report = () => {
         };
     }, [refreshing, showRefreshingIndicator]);
 
-    useEffect(() => {
-        fetchClients();
-    }, []);
-
     const fetchClients = async (isRefresh = false) => {
         try {
             if (isRefresh) {
@@ -182,10 +213,13 @@ const Report = () => {
                 setLoading(true);
             }
             const response = await axiosInstance.get("/api/admin/clients/all");
-            setClients(response.data.clients || []);
+            const clientsData = response.data.clients || [];
+            setClients(clientsData);
+            return clientsData;
         } catch (error) {
             toast.error("Failed to fetch clients");
             console.error(error);
+            return [];
         } finally {
             if (isRefresh) {
                 setRefreshing(false);
@@ -194,6 +228,40 @@ const Report = () => {
             }
         }
     };
+
+    useEffect(() => {
+        const init = async () => {
+            const allClients = await fetchClients();
+            const pendingActionStr = sessionStorage.getItem("pendingReportAction");
+
+            if (pendingActionStr && allClients && allClients.length > 0) {
+                const { clientId, modelId } = JSON.parse(pendingActionStr);
+                sessionStorage.removeItem("pendingReportAction");
+
+                const clientTarget = allClients.find((c: Client) => c.id === clientId);
+                if (clientTarget) {
+                    setSelectedClient(clientTarget);
+                    try {
+                        setLoading(true);
+                        const stockResponse = await axiosInstance.get(`/api/stock/client-inventory/${clientId}`);
+                        const stocks = stockResponse.data.inventory || [];
+                        setClientStocks(stocks);
+
+                        const stockTarget = stocks.find((s: ClientStock) => s.modelId === modelId);
+                        if (stockTarget) {
+                            setSelectedModel(stockTarget);
+                            await fetchHistory(clientId, modelId, { page: 1 });
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    } finally {
+                        setLoading(false);
+                    }
+                }
+            }
+        };
+        init();
+    }, []);
 
     const fetchClientStocks = async (clientId: string) => {
         try {
@@ -208,13 +276,52 @@ const Report = () => {
         }
     };
 
-    const fetchHistory = async (clientId: string, modelId: string) => {
+    const fetchHistory = async (
+        clientId: string,
+        modelId: string,
+        options: { page?: number; fromDate?: string; toDate?: string; status?: HistoryStatusFilter } = {}
+    ) => {
+        const pageToLoad = options.page ?? historyPage;
+        const fromDateValue = options.fromDate ?? historyFromDate;
+        const toDateValue = options.toDate ?? historyToDate;
+        const statusValue = options.status ?? historyStatusFilter;
+
         try {
             setLoading(true);
-            const response = await axiosInstance.get(
-                `/api/stock/history/${clientId}/${modelId}`
-            );
-            setHistory(response.data.data || []);
+            const params: Record<string, string | number> = {
+                page: pageToLoad,
+                pageSize: historyPageSize,
+                timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+            };
+
+            if (fromDateValue) {
+                params.fromDate = fromDateValue;
+            }
+
+            if (toDateValue) {
+                params.toDate = toDateValue;
+            }
+
+            if (statusValue !== "ALL") {
+                params.status = statusValue;
+            }
+
+            const response = await axiosInstance.get(`/api/stock/history/${clientId}/${modelId}`, {
+                params,
+            });
+
+            const historyData: StockHistory[] = response.data.data || [];
+            const pagination: HistoryPagination = {
+                page: response.data.pagination?.page ?? pageToLoad,
+                pageSize: response.data.pagination?.pageSize ?? historyPageSize,
+                totalCount: response.data.pagination?.totalCount ?? historyData.length,
+                totalPages: response.data.pagination?.totalPages ?? 0,
+            };
+
+            setHistory(historyData);
+            setHistoryPage(pagination.page);
+            setHistoryTotalPages(pagination.totalPages);
+            setHistoryTotalCount(pagination.totalCount);
         } catch (error) {
             toast.error("Failed to fetch history");
             console.error(error);
@@ -228,14 +335,23 @@ const Report = () => {
         fetchClientStocks(client.id);
         setSelectedModel(null);
         setHistory([]);
+        setHistoryPage(1);
+        setHistoryTotalPages(0);
+        setHistoryTotalCount(0);
+        setHistoryStatusFilter("ALL");
+        setHistoryFromDate("");
+        setHistoryToDate("");
         setSearchModels("");
         setActiveCategoryTab("ALL");
     };
 
     const handleModelClick = (stock: ClientStock) => {
         setSelectedModel(stock);
+        setHistoryPage(1);
+        setHistoryTotalPages(0);
+        setHistoryTotalCount(0);
         if (selectedClient) {
-            fetchHistory(selectedClient.id, stock.modelId);
+            fetchHistory(selectedClient.id, stock.modelId, { page: 1 });
         }
     };
 
@@ -243,61 +359,81 @@ const Report = () => {
         if (selectedModel) {
             setSelectedModel(null);
             setHistory([]);
+            setHistoryPage(1);
+            setHistoryTotalPages(0);
+            setHistoryTotalCount(0);
+            setHistoryStatusFilter("ALL");
+            setHistoryFromDate("");
+            setHistoryToDate("");
         } else if (selectedClient) {
             setSelectedClient(null);
             setClientStocks([]);
         }
     };
 
-    const handleRevertClick = (record: StockHistory) => {
-        if (!record.transferGroupId) {
-            toast.error("Cannot revert: missing transfer group ID");
-            return;
-        }
-        setRecordToRevert(record);
-        setRevertReason("");
-        setShowRevertModal(true);
-    };
-
-    const handleConfirmRevert = async () => {
-        if (!recordToRevert || !recordToRevert.transferGroupId) {
-            toast.error("Invalid record for reversion");
-            return;
-        }
-
-        if (!revertReason.trim()) {
-            toast.error("Please provide a reason for reversion");
-            return;
-        }
-
+    const handleProceedTransfer = async (transferGroupId: string) => {
         try {
-            setRevertingGroupId(recordToRevert.transferGroupId);
-
-            // Determine which endpoint to call based on transfer type
-            const endpoint = !isAddStockRecord(recordToRevert)
-                ? `/api/stock/revert-transfer/${recordToRevert.transferGroupId}`
-                : `/api/stock/revert-add-stock/${recordToRevert.transferGroupId}`;
-
-            const response = await axiosInstance.post(endpoint, {
-                reason: revertReason.trim()
-            });
-
+            setActioningGroupId(transferGroupId);
+            const response = await axiosInstance.post(`/api/stock/proceed-transfer/${transferGroupId}`);
             if (response.data.success) {
-                toast.success("Stock entry reverted successfully");
-                // Refresh history and close modal
-                setShowRevertModal(false);
-                setRecordToRevert(null);
-                setRevertReason("");
+                toast.success("Transfer completed successfully");
                 if (selectedClient && selectedModel) {
-                    await fetchHistory(selectedClient.id, selectedModel.modelId);
+                    await fetchHistory(selectedClient.id, selectedModel.modelId, { page: historyPage });
                     await fetchClientStocks(selectedClient.id);
                 }
             }
         } catch (error: any) {
-            const errorMsg = error.response?.data?.error || error.message || "Failed to revert stock entry";
-            toast.error(errorMsg);
+            toast.error(error.response?.data?.error || "Failed to proceed transfer");
         } finally {
-            setRevertingGroupId(null);
+            setActioningGroupId(null);
+        }
+    };
+
+    const handleCancelTransfer = async (transferGroupId: string) => {
+        try {
+            setActioningGroupId(transferGroupId);
+            const response = await axiosInstance.post(`/api/stock/cancel-transfer/${transferGroupId}`);
+            if (response.data.success) {
+                toast.success("Transfer cancelled successfully");
+                if (selectedClient && selectedModel) {
+                    await fetchHistory(selectedClient.id, selectedModel.modelId, { page: historyPage });
+                }
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || "Failed to cancel transfer");
+        } finally {
+            setActioningGroupId(null);
+        }
+    };
+
+    const handleEditClick = (record: StockHistory) => {
+        setRecordToEdit(record);
+        setEditFormData({
+            quantity: Math.abs(record.quantity).toString(),
+            awb: record.awb || "",
+            jobNo: record.jobNo || ""
+        });
+        setShowEditModal(true);
+    };
+
+    const handleConfirmEdit = async () => {
+        if (!recordToEdit || !recordToEdit.transferGroupId) return;
+
+        try {
+            setActioningGroupId(recordToEdit.transferGroupId);
+            const response = await axiosInstance.put(`/api/stock/edit-transfer/${recordToEdit.transferGroupId}`, editFormData);
+            if (response.data.success) {
+                toast.success("Transfer updated successfully");
+                setShowEditModal(false);
+                setRecordToEdit(null);
+                if (selectedClient && selectedModel) {
+                    await fetchHistory(selectedClient.id, selectedModel.modelId, { page: historyPage });
+                }
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || "Failed to update transfer");
+        } finally {
+            setActioningGroupId(null);
         }
     };
 
@@ -311,17 +447,13 @@ const Report = () => {
         if (record.quantity < 0) {
             return record.toClient?.companyName
                 ? `Transferred to client ${record.toClient.companyName}`
-                : "Transferred to client Unknown";
+                : "-";
         }
 
         return "-";
     };
 
-    const isAddStockRecord = (record: StockHistory) => {
-        return record.transferType === "INITIAL_LOAD" ||
-            record.transferType === "In" ||
-            (!record.fromClientId && !record.toClientId && record.quantity > 0);
-    };
+    const revertedGroupIds = useMemo(() => buildRevertedGroupIds(history), [history]);
 
     const isRevertedOrReversal = (record: StockHistory) => {
         // Check if this is a reversal entry
@@ -330,53 +462,112 @@ const Report = () => {
         }
         // Check if this entry was reverted (a reversal exists with its group ID in the message)
         if (record.transferGroupId) {
-            return history.some(h =>
-                h.transferType === "REVERSAL" &&
-                h.message &&
-                h.message.includes(`[REVERSAL_OF_GROUP:${record.transferGroupId}]`)
-            );
+            return revertedGroupIds.has(record.transferGroupId);
         }
         return false;
     };
 
-    const exportToExcel = () => {
-        if (history.length === 0) {
-            toast.warning("No data to export");
+    const exportToExcel = async () => {
+        if (!selectedClient || !selectedModel) {
+            toast.warning("Select a client and model first");
             return;
         }
 
-        const totalCurrentQuantity = selectedModel?.currentBalance ?? 0;
+        const totalCurrentQuantity = selectedModel.currentBalance ?? 0;
 
-        // Filter out REVERSAL entries and their originals from export
-        const data = history
-            .filter((record) => !isRevertedOrReversal(record))
-            .map((record) => ({
-                "Date": new Date(record.createdAt).toLocaleString(),
-                "Movement Date": record.movementDate ? new Date(record.movementDate).toLocaleDateString() : "-",
-                "Type": record.transferType || "TRANSFER",
-                "Stock Movement": getStockMovementText(record),
-                "Model": record.model.name,
-                "Quantity": record.quantity,
-                "Job No": record.jobNo || "-",
-                "AWB": record.awb || "-",
-                "Message": record.message || "-",
-                "Performed By": record.user.fullName,
-            }));
+        try {
+            setExporting(true);
 
-        const worksheet = XLSX.utils.json_to_sheet(data);
-        XLSX.utils.sheet_add_aoa(
-            worksheet,
-            [
-                [],
-                ["Total Current Quantity", totalCurrentQuantity]
-            ],
-            { origin: -1 }
-        );
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "History");
+            const allHistory: StockHistory[] = [];
+            let page = 1;
+            let totalPages = 1;
 
-        XLSX.writeFile(workbook, `${selectedClient?.companyName}_${selectedModel?.model.name}_history.xlsx`);
-        toast.success("Report exported successfully");
+            while (page <= totalPages) {
+                const params: Record<string, string | number> = {
+                    page,
+                    pageSize: 200,
+                    timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+                };
+
+                if (historyFromDate) {
+                    params.fromDate = historyFromDate;
+                }
+
+                if (historyToDate) {
+                    params.toDate = historyToDate;
+                }
+
+                if (historyStatusFilter !== "ALL") {
+                    params.status = historyStatusFilter;
+                }
+
+                const response = await axiosInstance.get(
+                    `/api/stock/history/${selectedClient.id}/${selectedModel.modelId}`,
+                    { params }
+                );
+
+                const pageData: StockHistory[] = response.data.data || [];
+                allHistory.push(...pageData);
+
+                totalPages = response.data.pagination?.totalPages || 0;
+                if (totalPages === 0) {
+                    break;
+                }
+
+                page += 1;
+            }
+
+            if (allHistory.length === 0) {
+                toast.warning("No data to export");
+                return;
+            }
+
+            const exportRevertedGroupIds = buildRevertedGroupIds(allHistory);
+            const data = allHistory
+                .filter((record) => {
+                    if (record.transferType === "REVERSAL") {
+                        return false;
+                    }
+
+                    if (record.transferGroupId && exportRevertedGroupIds.has(record.transferGroupId)) {
+                        return false;
+                    }
+
+                    return true;
+                })
+                .map((record) => ({
+                    "Date": new Date(record.createdAt).toLocaleString(),
+                    "Movement Date": record.movementDate ? new Date(record.movementDate).toLocaleDateString() : "-",
+                    "Type": record.transferType || "TRANSFER",
+                    "Stock Movement": getStockMovementText(record),
+                    "Model": record.model.name,
+                    "Quantity": record.quantity,
+                    "Job No": record.jobNo || "-",
+                    "AWB": record.awb || "-",
+                    "Message": record.message || "-",
+                    "Performed By": record.user.fullName,
+                }));
+
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            XLSX.utils.sheet_add_aoa(
+                worksheet,
+                [
+                    [],
+                    ["Total Current Quantity", totalCurrentQuantity]
+                ],
+                { origin: -1 }
+            );
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "History");
+
+            XLSX.writeFile(workbook, `${selectedClient.companyName}_${selectedModel.model.name}_history.xlsx`);
+            toast.success(`Report exported successfully (${data.length} rows)`);
+        } catch (error) {
+            console.error("Error exporting report:", error);
+            toast.error("Failed to export report");
+        } finally {
+            setExporting(false);
+        }
     };
 
     const exportClientsToExcel = () => {
@@ -442,6 +633,9 @@ const Report = () => {
         modelCount: clientStocks.length,
         totalStock: clientStocks.reduce((sum, stock) => sum + stock.currentBalance, 0)
     };
+
+    const historyRangeStart = historyTotalCount === 0 ? 0 : (historyPage - 1) * historyPageSize + 1;
+    const historyRangeEnd = historyTotalCount === 0 ? 0 : Math.min(historyPage * historyPageSize, historyTotalCount);
 
     const exportModelInventoryToExcel = () => {
         if (filteredStocks.length === 0) {
@@ -817,145 +1011,300 @@ const Report = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => {
+                        onClick={async () => {
                             if (selectedClient && selectedModel) {
                                 setRefreshing(true);
-                                fetchHistory(selectedClient.id, selectedModel.modelId).finally(() => setRefreshing(false));
+                                try {
+                                    await fetchHistory(selectedClient.id, selectedModel.modelId, { page: historyPage });
+
+                                    // Fetch updated inventory silently to update total current quantity
+                                    const response = await axiosInstance.get(`/api/stock/client-inventory/${selectedClient.id}`);
+                                    const stocks = response.data.inventory || [];
+                                    setClientStocks(stocks);
+
+                                    const updatedModel = stocks.find((s: ClientStock) => s.modelId === selectedModel.modelId);
+                                    if (updatedModel) {
+                                        setSelectedModel(updatedModel);
+                                    }
+                                } catch (error) {
+                                    console.error("Error refreshing status:", error);
+                                } finally {
+                                    setRefreshing(false);
+                                }
                             }
                         }}
                         disabled={refreshing}
                         className="flex items-center gap-2 px-4 py-2.5 bg-(--apl-cyan) text-white rounded-xl hover:bg-(--apl-cyan)/80 transition-all disabled:opacity-50 font-medium"
                     >
                         <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
-                        {refreshing ? "Refreshing..." : "Refresh"}
+                        {refreshing ? "Refreshing..." : "Refresh Status"}
                     </button>
                     <button
                         onClick={exportToExcel}
-                        className="flex items-center gap-2 px-4 py-2 bg-(--apl-cyan) text-white rounded-lg hover:bg-(--apl-cyan)/80 transition-all"
+                        disabled={exporting}
+                        className="flex items-center gap-2 px-4 py-2 bg-(--apl-cyan) text-white rounded-lg hover:bg-(--apl-cyan)/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <Download size={18} />
-                        Export Excel
+                        {exporting ? <RefreshCw size={18} className="animate-spin" /> : <Download size={18} />}
+                        {exporting ? "Exporting..." : "Export Full Filtered"}
                     </button>
                 </div>
             </div>
 
             <div className="bg-slate-800/40 backdrop-blur-xl border border-white/5 rounded-xl p-6">
+                <div className="mb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+                    <div>
+                        <label className="block text-xs uppercase tracking-wider text-slate-400 mb-1">From Date</label>
+                        <input
+                            type="date"
+                            value={historyFromDate}
+                            onChange={(e) => setHistoryFromDate(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-(--apl-cyan)"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase tracking-wider text-slate-400 mb-1">To Date</label>
+                        <input
+                            type="date"
+                            value={historyToDate}
+                            onChange={(e) => setHistoryToDate(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-(--apl-cyan)"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase tracking-wider text-slate-400 mb-1">Status</label>
+                        <select
+                            value={historyStatusFilter}
+                            onChange={(e) => setHistoryStatusFilter(e.target.value as HistoryStatusFilter)}
+                            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-(--apl-cyan)"
+                        >
+                            <option value="ALL">All</option>
+                            <option value="PENDING">Pending</option>
+                            <option value="COMPLETED">Completed</option>
+                            <option value="CANCELLED">Cancelled</option>
+                        </select>
+                    </div>
+                    <div className="xl:col-span-2 flex items-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (historyFromDate && historyToDate && historyFromDate > historyToDate) {
+                                    toast.warning("From date must be earlier than To date");
+                                    return;
+                                }
+
+                                if (selectedClient && selectedModel) {
+                                    setHistoryPage(1);
+                                    fetchHistory(selectedClient.id, selectedModel.modelId, { page: 1 });
+                                }
+                            }}
+                            className="px-4 py-2 bg-(--apl-cyan) text-white rounded-lg hover:bg-(--apl-cyan)/80 transition-all font-medium"
+                        >
+                            Apply Filters
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const defaultStatus: HistoryStatusFilter = "ALL";
+                                setHistoryFromDate("");
+                                setHistoryToDate("");
+                                setHistoryStatusFilter(defaultStatus);
+                                setHistoryPage(1);
+
+                                if (selectedClient && selectedModel) {
+                                    fetchHistory(selectedClient.id, selectedModel.modelId, {
+                                        page: 1,
+                                        fromDate: "",
+                                        toDate: "",
+                                        status: defaultStatus,
+                                    });
+                                }
+                            }}
+                            className="px-4 py-2 bg-slate-700 text-slate-200 rounded-lg hover:bg-slate-600 transition-all font-medium"
+                        >
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
                 {loading ? (
                     <LoadingPanel message="Loading history..." showSpinner={showLoadingIndicator} />
                 ) : history.length === 0 ? (
                     <div className="text-center py-8 text-slate-400">No transactions found</div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-slate-700">
-                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Entry Date & Time</th>
-                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Movement Date</th>
-                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Type</th>
-                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Stock Movement</th>
-                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Model</th>
-                                    <th className="text-right py-3 px-4 text-slate-400 font-medium">Quantity</th>
-                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Job No</th>
-                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">AWB</th>
-                                    <th className="text-center py-3 px-4 text-slate-400 font-medium">Message</th>
-                                    <th className="text-center py-3 px-4 text-slate-400 font-medium">Action</th>
-                                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Performed By</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {history.map((record) => (
-                                    <tr
-                                        key={record.id}
-                                        className={`border-b border-slate-700/50 hover:bg-slate-700/20 ${isRevertedOrReversal(record) ? "bg-red-500/10" : ""
-                                            }`}
-                                    >
-                                        <td className="py-3 px-4 text-slate-300">
-                                            {new Date(record.createdAt).toLocaleString()}
-                                        </td>
-                                        <td className="py-3 px-4 text-slate-300 text-xs">
-                                            {record.movementDate ? new Date(record.movementDate).toLocaleDateString() : "-"}
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <span
-                                                className={`px-2 py-1 rounded-full text-xs font-medium ${isRevertedOrReversal(record)
-                                                    ? "bg-red-500/20 text-red-400"
-                                                    : record.transferType === "INITIAL_LOAD"
-                                                        ? "bg-cyan-500/10 text-cyan-400"
-                                                        : "bg-purple-500/10 text-purple-400"
-                                                    }`}
-                                            >
-                                                {record.transferType || "TRANSFER"}
-                                            </span>
-                                        </td>
-                                        <td className="py-3 px-4 text-slate-300 text-xs">
-                                            {getStockMovementText(record)}
-                                        </td>
-                                        <td className="py-3 px-4 text-white">{record.model.name}</td>
-                                        <td className="py-3 px-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                {record.quantity > 0 ? (
-                                                    <TrendingUp className="text-green-400" size={16} />
-                                                ) : (
-                                                    <TrendingDown className="text-red-400" size={16} />
+                    <div className="space-y-4">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-700">
+                                        <th className="text-left py-3 px-4 text-slate-400 font-medium">Entry Date & Time</th>
+                                        <th className="text-left py-3 px-4 text-slate-400 font-medium">Movement Date</th>
+                                        <th className="text-left py-3 px-4 text-slate-400 font-medium">Type</th>
+                                        <th className="text-left py-3 px-4 text-slate-400 font-medium">Stock Movement</th>
+                                        <th className="text-left py-3 px-4 text-slate-400 font-medium">Model</th>
+                                        <th className="text-right py-3 px-4 text-slate-400 font-medium">Quantity</th>
+                                        <th className="text-left py-3 px-4 text-slate-400 font-medium">Job No</th>
+                                        <th className="text-left py-3 px-4 text-slate-400 font-medium">AWB</th>
+                                        <th className="text-center py-3 px-4 text-slate-400 font-medium">Message</th>
+                                        <th className="text-center py-3 px-4 text-slate-400 font-medium">Action</th>
+                                        <th className="text-left py-3 px-4 text-slate-400 font-medium">Performed By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {history.map((record) => (
+                                        <tr
+                                            key={record.id}
+                                            className={`border-b border-slate-700/50 hover:bg-slate-700/20 ${record.status === "PENDING"
+                                                ? "bg-yellow-500/10"
+                                                : isRevertedOrReversal(record)
+                                                    ? "bg-red-500/10"
+                                                    : ""
+                                                }`}
+                                        >
+                                            <td className="py-3 px-4 text-slate-300">
+                                                {new Date(record.createdAt).toLocaleString()}
+                                                {record.status === "PENDING" && (
+                                                    <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-500/20 text-yellow-500 uppercase tracking-wider">
+                                                        Pending
+                                                    </span>
                                                 )}
+                                            </td>
+                                            <td className="py-3 px-4 text-slate-300 text-xs">
+                                                {record.movementDate ? new Date(record.movementDate).toLocaleDateString() : "-"}
+                                            </td>
+                                            <td className="py-3 px-4">
                                                 <span
-                                                    className={`font-semibold ${record.quantity > 0 ? "text-green-400" : "text-red-400"
+                                                    className={`px-2 py-1 rounded-full text-xs font-medium ${isRevertedOrReversal(record)
+                                                        ? "bg-red-500/20 text-red-400"
+                                                        : record.transferType === "INITIAL_LOAD"
+                                                            ? "bg-cyan-500/10 text-cyan-400"
+                                                            : "bg-purple-500/10 text-purple-400"
                                                         }`}
                                                 >
-                                                    {record.quantity > 0 ? "+" : ""}
-                                                    {record.quantity}
+                                                    {record.transferType || "TRANSFER"}
                                                 </span>
-                                            </div>
-                                        </td>
-                                        <td className="py-3 px-4 text-slate-300 text-xs">{record.jobNo || "-"}</td>
-                                        <td className="py-3 px-4 text-slate-300 text-xs">{record.awb || "-"}</td>
-                                        <td className="py-3 px-4 text-center">
-                                            {record.message ? (
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedMessage(record.message);
-                                                        setShowMessageModal(true);
-                                                    }}
-                                                    className="inline-flex items-center justify-center p-1.5 rounded-lg bg-(--apl-cyan)/10 text-(--apl-cyan) hover:bg-(--apl-cyan)/20 transition-all"
-                                                    title="View message"
-                                                >
-                                                    <MessageSquare size={16} />
-                                                </button>
-                                            ) : (
-                                                <span className="text-slate-500 text-xs">-</span>
-                                            )}
-                                        </td>
-                                        <td className="py-3 px-4 text-center">
-                                            {record.transferType !== "REVERSAL" && record.transferGroupId ? (
-                                                isAddStockRecord(record) ? (
-                                                    <button
-                                                        onClick={() => handleRevertClick(record)}
-                                                        disabled={revertingGroupId === record.transferGroupId}
-                                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
-                                                        title="Delete Initial Stock"
+                                            </td>
+                                            <td className="py-3 px-4 text-slate-300 text-xs">
+                                                {getStockMovementText(record)}
+                                            </td>
+                                            <td className="py-3 px-4 text-white">{record.model.name}</td>
+                                            <td className="py-3 px-4 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {record.quantity > 0 ? (
+                                                        <TrendingUp className="text-green-400" size={16} />
+                                                    ) : (
+                                                        <TrendingDown className="text-red-400" size={16} />
+                                                    )}
+                                                    <span
+                                                        className={`font-semibold ${record.quantity > 0 ? "text-green-400" : "text-red-400"
+                                                            }`}
                                                     >
-                                                        <Trash2 size={16} />
-                                                        {revertingGroupId === record.transferGroupId ? "Deleting..." : "Delete"}
+                                                        {record.quantity > 0 ? "+" : ""}
+                                                        {record.quantity}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-4 text-slate-300 text-xs">{record.jobNo || "-"}</td>
+                                            <td className="py-3 px-4 text-slate-300 text-xs">{record.awb || "-"}</td>
+                                            <td className="py-3 px-4 text-center">
+                                                {record.message ? (
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedMessage(record.message);
+                                                            setShowMessageModal(true);
+                                                        }}
+                                                        className="inline-flex items-center justify-center p-1.5 rounded-lg bg-(--apl-cyan)/10 text-(--apl-cyan) hover:bg-(--apl-cyan)/20 transition-all"
+                                                        title="View message"
+                                                    >
+                                                        <MessageSquare size={16} />
                                                     </button>
                                                 ) : (
-                                                    <button
-                                                        onClick={() => handleRevertClick(record)}
-                                                        disabled={revertingGroupId === record.transferGroupId}
-                                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
-                                                    >
-                                                        <Undo2 size={16} />
-                                                        {revertingGroupId === record.transferGroupId ? "Reverting..." : "Revert"}
-                                                    </button>
-                                                )
-                                            ) : (
-                                                <span className="text-slate-500 text-xs">-</span>
-                                            )}
-                                        </td>
-                                        <td className="py-3 px-4 text-slate-300">{record.user.fullName}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                                    <span className="text-slate-500 text-xs">-</span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-4 text-center">
+                                                {record.status === "PENDING" && record.transferGroupId ? (
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        {(() => {
+                                                            const isActioning = actioningGroupId === record.transferGroupId;
+
+                                                            return (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => handleProceedTransfer(record.transferGroupId!)}
+                                                                        disabled={isActioning}
+                                                                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-all disabled:opacity-50 font-medium text-xs"
+                                                                        title="Approve & Complete"
+                                                                    >
+                                                                        {isActioning ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                                                                        {isActioning ? "Working..." : "Proceed"}
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleEditClick(record)}
+                                                                        disabled={isActioning}
+                                                                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all disabled:opacity-50 font-medium text-xs"
+                                                                        title="Edit Details"
+                                                                    >
+                                                                        {isActioning ? <RefreshCw size={14} className="animate-spin" /> : <Edit size={14} />}
+                                                                        {isActioning ? "Working..." : "Edit"}
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleCancelTransfer(record.transferGroupId!)}
+                                                                        disabled={isActioning}
+                                                                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all disabled:opacity-50 font-medium text-xs"
+                                                                        title="Cancel & Suspend"
+                                                                    >
+                                                                        {isActioning ? <RefreshCw size={14} className="animate-spin" /> : <Ban size={14} />}
+                                                                        {isActioning ? "Working..." : "Cancel"}
+                                                                    </button>
+                                                                </>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-500 text-xs">-</span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-4 text-slate-300">{record.user.fullName}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-t border-white/5 pt-4">
+                            <p className="text-sm text-slate-400">
+                                Showing <span className="text-white font-medium">{historyRangeStart}-{historyRangeEnd}</span> of <span className="text-white font-medium">{historyTotalCount}</span> entries
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (selectedClient && selectedModel && historyPage > 1) {
+                                            fetchHistory(selectedClient.id, selectedModel.modelId, { page: historyPage - 1 });
+                                        }
+                                    }}
+                                    disabled={historyPage <= 1}
+                                    className="px-3 py-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Previous
+                                </button>
+                                <span className="px-3 py-2 rounded-lg bg-slate-900/50 border border-slate-700 text-sm text-slate-300 min-w-27.5 text-center">
+                                    Page {historyPage} of {Math.max(historyTotalPages, 1)}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (selectedClient && selectedModel && historyPage < historyTotalPages) {
+                                            fetchHistory(selectedClient.id, selectedModel.modelId, { page: historyPage + 1 });
+                                        }
+                                    }}
+                                    disabled={historyPage >= historyTotalPages}
+                                    className="px-3 py-2 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
@@ -994,82 +1343,82 @@ const Report = () => {
                 </div>
             )}
 
-            {showRevertModal && recordToRevert && (() => {
-                const isDeleting = isAddStockRecord(recordToRevert);
-                return (
-                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                        <div className="bg-slate-800/95 border border-white/10 rounded-xl p-6 max-w-md w-full shadow-2xl">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                    {isDeleting ? <Trash2 size={20} className="text-yellow-500" /> : <Undo2 size={20} className="text-red-400" />}
-                                    {isDeleting ? "Delete Stock Entry" : "Revert Stock Entry"}
-                                </h3>
-                                <button
-                                    onClick={() => {
-                                        setShowRevertModal(false);
-                                        setRecordToRevert(null);
-                                        setRevertReason("");
-                                    }}
-                                    disabled={revertingGroupId !== null}
-                                    className="p-1 hover:bg-slate-700/50 rounded-lg transition-colors disabled:opacity-50"
-                                >
-                                    <X size={20} className="text-slate-400" />
-                                </button>
+            {showEditModal && recordToEdit && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-slate-800/95 border border-white/10 rounded-xl p-6 max-w-md w-full shadow-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <Edit size={20} className="text-blue-400" />
+                                Edit Pending Transfer
+                            </h3>
+                            <button
+                                onClick={() => {
+                                    setShowEditModal(false);
+                                    setRecordToEdit(null);
+                                }}
+                                disabled={actioningGroupId !== null}
+                                className="p-1 hover:bg-slate-700/50 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                <X size={20} className="text-slate-400" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4 mb-6">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">Quantity</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={editFormData.quantity}
+                                    onChange={(e) => setEditFormData({ ...editFormData, quantity: e.target.value })}
+                                    disabled={actioningGroupId !== null}
+                                    className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400/50 disabled:opacity-50"
+                                />
                             </div>
-
-                            <div className={isDeleting ? "bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-4" : "bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-4"}>
-                                <p className={isDeleting ? "text-yellow-300 text-sm" : "text-red-300 text-sm"}>
-                                    <strong>Warning:</strong> {isDeleting ? "This action will permanently delete the stock entry from the history. Make sure no transfers have used this stock." : "This action will create a reversal entry. The original entry and its reversal will remain in the history for audit purposes."}
-                                </p>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">AWB</label>
+                                <input
+                                    type="text"
+                                    value={editFormData.awb}
+                                    onChange={(e) => setEditFormData({ ...editFormData, awb: e.target.value })}
+                                    disabled={actioningGroupId !== null}
+                                    className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400/50 disabled:opacity-50"
+                                />
                             </div>
-
-                            <div className="space-y-3 mb-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1">Entry Details</label>
-                                    <div className="text-xs text-slate-400 space-y-1">
-                                        <p><strong>Type:</strong> {recordToRevert.transferType}</p>
-                                        <p><strong>Quantity:</strong> {recordToRevert.quantity > 0 ? '+' : ''}{recordToRevert.quantity}</p>
-                                        <p><strong>Date:</strong> {new Date(recordToRevert.createdAt).toLocaleString()}</p>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-2">Reason for {isDeleting ? "Deletion" : "Reversal"}</label>
-                                    <textarea
-                                        value={revertReason}
-                                        onChange={(e) => setRevertReason(e.target.value)}
-                                        placeholder={`Enter reason for ${isDeleting ? "deleting" : "reverting"} this entry...`}
-                                        rows={3}
-                                        disabled={revertingGroupId !== null}
-                                        className={`w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-1 disabled:opacity-50 text-sm ${isDeleting ? "focus:border-yellow-500 focus:ring-yellow-500/50" : "focus:border-red-400 focus:ring-red-400/50"}`}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => {
-                                        setShowRevertModal(false);
-                                        setRecordToRevert(null);
-                                        setRevertReason("");
-                                    }}
-                                    disabled={revertingGroupId !== null}
-                                    className="flex-1 px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-all disabled:opacity-50 font-medium"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleConfirmRevert}
-                                    disabled={!revertReason.trim() || revertingGroupId !== null}
-                                    className={`flex-1 px-4 py-2 ${isDeleting ? "bg-yellow-600 hover:bg-yellow-700" : "bg-red-600 hover:bg-red-700"} text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium`}
-                                >
-                                    {revertingGroupId ? (isDeleting ? "Deleting..." : "Reverting...") : (isDeleting ? "Confirm Delete" : "Confirm Revert")}
-                                </button>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">Job No</label>
+                                <input
+                                    type="text"
+                                    value={editFormData.jobNo}
+                                    onChange={(e) => setEditFormData({ ...editFormData, jobNo: e.target.value })}
+                                    disabled={actioningGroupId !== null}
+                                    className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400/50 disabled:opacity-50"
+                                />
                             </div>
                         </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowEditModal(false);
+                                    setRecordToEdit(null);
+                                }}
+                                disabled={actioningGroupId !== null}
+                                className="flex-1 px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-all disabled:opacity-50 font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmEdit}
+                                disabled={actioningGroupId !== null || !editFormData.quantity}
+                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium w-32 flex justify-center items-center"
+                            >
+                                {actioningGroupId ? <RefreshCw size={18} className="animate-spin" /> : "Save Changes"}
+                            </button>
+                        </div>
                     </div>
-                );
-            })()}
+                </div>
+            )}
         </div>
     );
 };

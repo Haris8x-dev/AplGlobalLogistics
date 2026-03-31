@@ -68,6 +68,7 @@ const AddStock = () => {
         }
         // Reset model selection when category changes
         setFormData(prev => ({ ...prev, modelId: "", modelSearch: "" }));
+        setShowModelSuggestions(false);
     }, [formData.categoryId, categories]);
 
     // Filter models based on search input
@@ -80,7 +81,6 @@ const AddStock = () => {
             setShowModelSuggestions(true);
         } else {
             setFilteredModels(models);
-            setShowModelSuggestions(false);
         }
     }, [formData.modelSearch, models]);
 
@@ -264,6 +264,7 @@ const AddStock = () => {
                                 value={formData.modelSearch}
                                 onChange={(e) => handleModelSearchChange(e.target.value)}
                                 onFocus={() => setShowModelSuggestions(true)}
+                                onClick={() => setShowModelSuggestions(true)}
                                 placeholder={formData.categoryId ? "Type to search models..." : "Select category first"}
                                 disabled={!formData.categoryId || loading}
                                 className="w-full px-4 py-4 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-(--apl-cyan) transition-colors pr-10"
@@ -281,7 +282,7 @@ const AddStock = () => {
                             )}
 
                             {/* Suggestions Dropdown */}
-                            {showModelSuggestions && filteredModels.length > 0 && formData.modelSearch && (
+                            {showModelSuggestions && filteredModels.length > 0 && formData.categoryId && (
                                 <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
                                     {filteredModels.map((model) => (
                                         <button
@@ -297,9 +298,11 @@ const AddStock = () => {
                             )}
 
                             {/* No Results Message */}
-                            {showModelSuggestions && filteredModels.length === 0 && formData.modelSearch && formData.categoryId && (
+                            {showModelSuggestions && filteredModels.length === 0 && formData.categoryId && (
                                 <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-4 text-center text-slate-400 text-sm">
-                                    No models found matching "{formData.modelSearch}"
+                                    {formData.modelSearch
+                                        ? `No models found matching "${formData.modelSearch}"`
+                                        : "No models found in this category"}
                                 </div>
                             )}
                         </div>
